@@ -1,0 +1,22 @@
+[package]
+name = "backend"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rusqlite = "0.26.1"
+actix-web = "3"
+env_logger = "0.8"
+failure = "0.1.7"
+"libsqlite3-sys" = "0.23.1"
+
+# The core APIs, including the Serialize and Deserialize traits. Always
+# required when using Serde. The "derive" feature is only required when
+# using #[derive(Serialize, Deserialize)] to make Serde work with structs
+# and enums defined in your crate.
+serde = { version = "1.0", features = ["derive"] }
+# Each data format lives in its own crate; the sample code below uses JSON
+# but you may be using a different one.
+serde_json = "1.0"
