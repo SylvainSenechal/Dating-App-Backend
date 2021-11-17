@@ -1,24 +1,23 @@
+use actix_web::http::StatusCode;
+use actix_web::HttpResponse;
+use serde::Serialize;
 use std::{fmt, ops::Add};
-use actix_web::{
-    http::{StatusCode},
-};
-use serde::{Serialize};
-use actix_web::{HttpResponse};
-
 
 #[derive(Debug)]
-pub enum CustomError {
+pub enum SqliteError {
     NotFound,
     UnknownSqliteError,
     SqliteFailure(libsqlite3_sys::Error),
     SqliteFailureExplained(libsqlite3_sys::Error, String),
     SqliteFailureNoText,
 }
-impl CustomError {
+impl SqliteError {
     pub fn name(&self) -> String {
         match self {
             Self::NotFound => "Ressource not found".to_string(),
-            Self::SqliteFailureExplained(sqliteFailureDetail, explaination) => sqliteFailureDetail.to_string().add(" : ").add(explaination),
+            Self::SqliteFailureExplained(sqliteFailureDetail, explaination) => {
+                sqliteFailureDetail.to_string().add(" : ").add(explaination)
+            }
             Self::SqliteFailure(sqliteFailureDetail) => sqliteFailureDetail.to_string(),
             Self::SqliteFailureNoText => {
                 "Something fucked up in the database, it's not your fault dud".to_string()
@@ -27,7 +26,7 @@ impl CustomError {
         }
     }
 }
-impl fmt::Display for CustomError {
+impl fmt::Display for SqliteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
@@ -39,7 +38,7 @@ struct ErrorResponse {
     error: String,
     message: String,
 }
-impl actix_web::ResponseError for CustomError {
+impl actix_web::ResponseError for SqliteError {
     fn status_code(&self) -> StatusCode {
         match *self {
             Self::NotFound => StatusCode::NOT_FOUND,
@@ -61,18 +60,22 @@ impl actix_web::ResponseError for CustomError {
     }
 }
 
-pub fn map_sqlite_error(e: rusqlite::Error) -> CustomError {
+pub fn map_sqlite_error(e: rusqlite::Error) -> SqliteError {
     // Todo : Add this to the logger
     println!("map sqlite error found : {:?}", e);
 
     match e {
-        rusqlite::Error::QueryReturnedNoRows => CustomError::NotFound,
-        rusqlite::Error::SqliteFailure(sqliteFailureDetail, Some(explaination)) => CustomError::SqliteFailureExplained(sqliteFailureDetail, explaination),
-        rusqlite::Error::SqliteFailure(sqliteFailureDetail, None) => CustomError::SqliteFailure(sqliteFailureDetail),
-        rusqlite::Error::InvalidColumnIndex(_) => CustomError::SqliteFailureNoText,
-        rusqlite::Error::InvalidColumnType(_, _, _) => CustomError::SqliteFailureNoText,
-        rusqlite::Error::InvalidColumnName(_) => CustomError::SqliteFailureNoText,
+        rusqlite::Error::QueryReturnedNoRows => SqliteError::NotFound,
+        rusqlite::Error::SqliteFailure(sqliteFailureDetail, Some(explaination)) => {
+            SqliteError::SqliteFailureExplained(sqliteFailureDetail, explaination)
+        }
+        rusqlite::Error::SqliteFailure(sqliteFailureDetail, None) => {
+            SqliteError::SqliteFailure(sqliteFailureDetail)
+        }
+        rusqlite::Error::InvalidColumnIndex(_) => SqliteError::SqliteFailureNoText,
+        rusqlite::Error::InvalidColumnType(_, _, _) => SqliteError::SqliteFailureNoText,
+        rusqlite::Error::InvalidColumnName(_) => SqliteError::SqliteFailureNoText,
 
-        _ => CustomError::UnknownSqliteError,
+        _ => SqliteError::UnknownSqliteError,
     }
 }

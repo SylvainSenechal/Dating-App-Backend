@@ -14,9 +14,11 @@ use argon2::{
 };
 use hex_literal::hex;
 
-
 const KEY_JWT: &str = "badObviousTestKey";
-
+const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
+const T_COST: u32 = 2; // t_cost is the number of iterations;
+const P_COST: u32 = 1; //p_cost is the degree of parallelism.
+const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in bytes
 // const KEY_JWT_REFRESH = "ohohoho"
 // const TOKEN_LIFESPAN = "30sec"
 // const TOKEN_REFRESH_LIFESPAN = "3600sec"
@@ -26,18 +28,16 @@ pub fn coucou() {
 
     // let password = b"hunter42"; // Bad password; don't actually use!
     // let salt = SaltString::generate(&mut OsRng);
-    
+
     // // Argon2 with default params (Argon2id v19)
     // let argon2 = Argon2::default();
-    
+
     // // Hash password to PHC string ($argon2id$v=19$...)
     // let password_hash = argon2.hash_password(password, &salt).unwrap().to_string();
-    
+
     // // Verify password against PHC string
     // let parsed_hash = PasswordHash::new(&password_hash).unwrap();
     // assert!(argon2.verify_password(password, &parsed_hash).is_ok());
-
-
 
     let algorithm = Algorithm::Argon2id;
     let version = Version::V0x13;
@@ -61,6 +61,23 @@ pub fn coucou() {
     println!("eeeee : {:?}", expected_tag);
     println!("eeeee : {:?}", password);
 
+
+    let hasher = Argon2::new(
+        algorithm,
+        version,
+        Params::new(M_COST, T_COST, P_COST, Some(OUTPUT_LEN))
+            .expect("Failed to build params for Argon2id") // TODO : clean error
+    );
+    
+    // let hashed_password = hasher.hash_password("nulPass".as_bytes(), "nulSalt")
+    //     .expect("Could not hash password"); // TODO : clean error
+
+    // if hashed_password != expected_hash {
+    //     Err(e)
+    // } else {
+    //     Ok()
+    // }
+    
 }
 
 fn example_params() -> Params {
