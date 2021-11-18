@@ -1,13 +1,10 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use rusqlite::{Connection};
 
-
 mod auth;
 mod data_access_layer;
 mod service_layer;
 mod my_errors;
-
-
 
 // TODO : see and_then()
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
@@ -30,7 +27,7 @@ impl AppState {
         println!("Creating user database");
         self.connection
             .execute(
-                "CREATE TABLE IF NOT EXISTS persons (
+                "CREATE TABLE IF NOT EXISTS users (
                 person_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 pseudo TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
@@ -42,10 +39,6 @@ impl AppState {
             .expect("Could not create table persons");
     }
 }
-
-
-
-
 
 async fn p404() -> HttpResponse {
     HttpResponse::NotFound().body("Four O Four : Nothing to see here dud 👀")
@@ -79,15 +72,15 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/users")
                     .service(
                         web::resource("")
-                            .route(web::get().to(data_access_layer::users::User::get_users))
+                            .route(web::get().to(service_layer::users::get_users))
                             .route(web::post().to(service_layer::users::create_user)),
                     )
-                    // .service(
-                    //     web::resource("/{user_id}")
-                    //         .route(web::get().to(data_access_layer::user::User::get_user)), // .route(web::post().to(post_user))
-                    //                                                                         // .route(web::delete().to(delete_user))
-                    //                                                                         // .route(web::patch().to(update_user))
-                    // ),
+                    .service(
+                        web::resource("/{user_id}")
+                            .route(web::get().to(service_layer::users::get_user)), // .route(web::post().to(post_user))
+                                                                                            // .route(web::delete().to(delete_user))
+                                                                                            // .route(web::patch().to(update_user))
+                    ),
             )
             .default_service(
                 web::resource("")

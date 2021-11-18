@@ -85,7 +85,7 @@ impl User {
         Ok(user_found)
     }
 
-    pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, SqliteError> {
+    pub async fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
         let mut statement = db
             .connection
             .prepare("SELECT * FROM users")
@@ -106,6 +106,6 @@ impl User {
             persons.push(person.map_err(map_sqlite_error)?);
         }
 
-        Ok(HttpResponse::Ok().json(persons))
+        Ok(persons)
     }
 }

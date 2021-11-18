@@ -8,6 +8,7 @@ use rand::thread_rng;
 
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::my_errors::sqlite_errors::map_sqlite_error;
 // use crate::data_access_layer::users;
 
 const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
@@ -17,12 +18,15 @@ const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in b
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateUser {
-    #[serde(default)]
     pseudo: String,
-    #[serde(default)]
     email: String,
     #[serde(default)]
     age: u8,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct GetUser {
+    pseudo: String,
 }
 
 pub async fn create_user(
@@ -60,7 +64,7 @@ pub async fn create_user(
                 pseudo: create_user_request.pseudo.to_string(),
                 email: create_user_request.email.to_string(),
                 password: phc_string,
-                age: Some(create_user_request.age)
+                age: Some(create_user_request.age) // todo : check this some thing
             };
             data_access_layer::users::User::create_user(&db, user).await?;
             return Ok(HttpResponse::Ok().body("User created"))
@@ -68,4 +72,20 @@ pub async fn create_user(
         _ => println!("Sqlite error"), // todo return err
     }
     Ok(HttpResponse::Ok().body("User created"))
+}
+
+pub async fn get_user(db: web::Data<AppState>, user: web::Json<GetUser>) -> actixResult<HttpResponse, SqliteError> {
+    let user_found = data_access_layer::users::User::get_user(&db, user.pseudo.to_string()).await;
+    match user_found {
+        Ok(user) => Ok(HttpResponse::Ok().json(user)),
+        Err(err) => Err(err)
+    }
+}
+
+pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, SqliteError> {
+    let users_found = data_access_layer::users::User::get_users(&db).await;
+    match users_found {
+        Ok(users) => Ok(HttpResponse::Ok().json(users)),
+        Err(err) => Err(err)
+    }    
 }
