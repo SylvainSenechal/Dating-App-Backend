@@ -25,7 +25,7 @@ impl User {
     ) -> actixResult<HttpResponse, SqliteError> {
         let mut statement = db
             .connection
-            .prepare("INSERT INTO persons (pseudo, email, password, age) VALUES (?, ?, ?, ?)")
+            .prepare("INSERT INTO users (pseudo, email, password, age) VALUES (?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         let nb_inserted = statement
             .execute(params![user.pseudo, user.email, user.password, user.age])
@@ -68,7 +68,7 @@ impl User {
     pub async fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
-            .prepare("SELECT * FROM persons WHERE pseudo = ?")
+            .prepare("SELECT * FROM users WHERE pseudo = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
@@ -88,7 +88,7 @@ impl User {
     pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, SqliteError> {
         let mut statement = db
             .connection
-            .prepare("SELECT * FROM persons")
+            .prepare("SELECT * FROM users")
             .map_err(map_sqlite_error)?;
         let result_rows = statement
             .query_map([], |row| {

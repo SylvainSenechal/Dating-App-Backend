@@ -15,10 +15,10 @@ impl SqliteError {
     pub fn name(&self) -> String {
         match self {
             Self::NotFound => "Ressource not found".to_string(),
-            Self::SqliteFailureExplained(sqliteFailureDetail, explaination) => {
-                sqliteFailureDetail.to_string().add(" : ").add(explaination)
+            Self::SqliteFailureExplained(sqlite_failure_detail, explaination) => {
+                sqlite_failure_detail.to_string().add(" : ").add(explaination)
             }
-            Self::SqliteFailure(sqliteFailureDetail) => sqliteFailureDetail.to_string(),
+            Self::SqliteFailure(sqlite_failure_detail) => sqlite_failure_detail.to_string(),
             Self::SqliteFailureNoText => {
                 "Something fucked up in the database, it's not your fault dud".to_string()
             }
@@ -66,11 +66,11 @@ pub fn map_sqlite_error(e: rusqlite::Error) -> SqliteError {
 
     match e {
         rusqlite::Error::QueryReturnedNoRows => SqliteError::NotFound,
-        rusqlite::Error::SqliteFailure(sqliteFailureDetail, Some(explaination)) => {
-            SqliteError::SqliteFailureExplained(sqliteFailureDetail, explaination)
+        rusqlite::Error::SqliteFailure(sqlite_failure_detail, Some(explaination)) => {
+            SqliteError::SqliteFailureExplained(sqlite_failure_detail, explaination)
         }
-        rusqlite::Error::SqliteFailure(sqliteFailureDetail, None) => {
-            SqliteError::SqliteFailure(sqliteFailureDetail)
+        rusqlite::Error::SqliteFailure(sqlite_failure_detail, None) => {
+            SqliteError::SqliteFailure(sqlite_failure_detail)
         }
         rusqlite::Error::InvalidColumnIndex(_) => SqliteError::SqliteFailureNoText,
         rusqlite::Error::InvalidColumnType(_, _, _) => SqliteError::SqliteFailureNoText,
