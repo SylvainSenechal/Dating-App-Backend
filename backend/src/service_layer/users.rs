@@ -8,7 +8,7 @@ use rand::thread_rng;
 
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::my_errors::sqlite_errors::map_sqlite_error;
+use crate::my_errors::service_errors::ServiceError;
 // use crate::data_access_layer::users;
 
 const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
@@ -32,10 +32,9 @@ pub struct GetUser {
 pub async fn create_user(
     db: web::Data<AppState>,
     create_user_request: web::Json<CreateUser>,
-) -> actixResult<HttpResponse, SqliteError> {
+) -> actixResult<HttpResponse, ServiceError> {
 
     let user = data_access_layer::users::User::get_user(&db, create_user_request.pseudo.to_string()).await;
-    println!("eeeee : {:?}", user);
 
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
@@ -57,35 +56,38 @@ pub async fn create_user(
     // Argon2::default().verify_password("nulPass".as_bytes(), &rehash).expect("could not verify");
 
     match user {
-        Ok(_) => println!("found user"), // todo return err
         Err(SqliteError::NotFound) => {
-            println!("user not found");
             let user = data_access_layer::users::User{
                 pseudo: create_user_request.pseudo.to_string(),
                 email: create_user_request.email.to_string(),
                 password: phc_string,
                 age: Some(create_user_request.age) // todo : check this some thing
             };
-            data_access_layer::users::User::create_user(&db, user).await?;
-            return Ok(HttpResponse::Ok().body("User created"))
+            match data_access_layer::users::User::create_user(&db, user).await {
+                Ok(()) => Ok(HttpResponse::Ok().body("User created")),
+                Err(err) => Err(ServiceError::SqliteError(err))
+            }
+             
         },
-        _ => println!("Sqlite error"), // todo return err
+        Ok(_) => Err(ServiceError::ServiceError("This user already exists".to_string())),
+        Err(err) => Err(ServiceError::SqliteError(err))
     }
-    Ok(HttpResponse::Ok().body("User created"))
 }
 
-pub async fn get_user(db: web::Data<AppState>, user: web::Json<GetUser>) -> actixResult<HttpResponse, SqliteError> {
-    let user_found = data_access_layer::users::User::get_user(&db, user.pseudo.to_string()).await;
+pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
+    println!("eeeee : {:?}", pseudo);
+    
+    let user_found = data_access_layer::users::User::get_user(&db, pseudo).await;
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
-        Err(err) => Err(err)
+        Err(err) => Err(ServiceError::SqliteError(err))
     }
 }
 
-pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, SqliteError> {
+pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
     let users_found = data_access_layer::users::User::get_users(&db).await;
     match users_found {
         Ok(users) => Ok(HttpResponse::Ok().json(users)),
-        Err(err) => Err(err)
+        Err(err) => Err(ServiceError::SqliteError(err))
     }    
 }

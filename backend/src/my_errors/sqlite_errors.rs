@@ -11,6 +11,7 @@ pub enum SqliteError {
     SqliteFailureExplained(libsqlite3_sys::Error, String),
     SqliteFailureNoText,
 }
+
 impl SqliteError {
     pub fn name(&self) -> String {
         match self {
@@ -33,7 +34,7 @@ impl fmt::Display for SqliteError {
 }
 #[derive(Serialize)]
 
-struct ErrorResponse {
+struct ErrorResponse { // todo : this is declared twice in service and sqlite errors
     code: u16,
     error: String,
     message: String,

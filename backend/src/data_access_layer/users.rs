@@ -1,4 +1,4 @@
-use actix_web::{web, HttpRequest, HttpResponse, Result as actixResult};
+use actix_web::web;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -22,48 +22,17 @@ impl User {
     pub async fn create_user(
         db: &web::Data<AppState>,
         user: User,
-    ) -> actixResult<HttpResponse, SqliteError> {
+    ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
             .prepare("INSERT INTO users (pseudo, email, password, age) VALUES (?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
-        let nb_inserted = statement
+        statement
             .execute(params![user.pseudo, user.email, user.password, user.age])
             .map_err(map_sqlite_error)?;
 
-        Ok(HttpResponse::Ok().body("User created"))
+        Ok(())
     }
-
-    // pub async fn get_user(
-    //     // TODO : get with id/pseudo instead of json
-    //     db: web::Data<AppState>,
-    //     web::Path(id): web::Path<u32>,
-    //     user: web::Json<User>,
-    //     req: HttpRequest,
-    // ) -> actixResult<HttpResponse, SqliteError> {
-    //     println!("{:?}", db.connection);
-    //     println!("{:?}", user);
-    //     println!("{:?}", req);
-    //     println!("{:?}", id);
-
-    //     let mut statement = db
-    //         .connection
-    //         .prepare("SELECT * FROM persons WHERE pseudo = ?")
-    //         .map_err(map_sqlite_error)?;
-
-    //     let res = statement
-    //         .query_row(params![user.pseudo], |row| {
-    //             Ok(User {
-    //                 pseudo: row.get("pseudo")?,
-    //                 age: row.get("age")?,
-    //                 email: row.get("email")?,
-    //                 ..Default::default()
-    //             })
-    //         })
-    //         .map_err(map_sqlite_error)?;
-
-    //     Ok(HttpResponse::Ok().json(res))
-    // }
 
     pub async fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
         let mut statement = db

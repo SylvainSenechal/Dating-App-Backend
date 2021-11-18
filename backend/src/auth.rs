@@ -15,6 +15,6 @@ const KEY_JWT: &str = "badObviousTestKey";
 // const TOKEN_LIFESPAN = "30sec"
 // const TOKEN_REFRESH_LIFESPAN = "3600sec"
 
-pub fn coucou() {
+// pub fn coucou() {
 
-}
+// }
