@@ -39,7 +39,7 @@ struct ErrorResponse { // todo : this is declared twice in service and sqlite er
     error: String,
     message: String,
 }
-impl actix_web::ResponseError for SqliteError {
+impl actix_web::ResponseError for SqliteError { // todo : this might not be useful anymore as we return service errors now
     fn status_code(&self) -> StatusCode {
         match *self {
             Self::NotFound => StatusCode::NOT_FOUND,

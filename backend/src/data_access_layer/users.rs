@@ -44,8 +44,9 @@ impl User {
             .query_row(params![pseudo], |row| {
                 Ok(User {
                     pseudo: row.get("pseudo")?,
-                    age: row.get("age")?,
                     email: row.get("email")?,
+                    password: row.get("password")?,
+                    age: row.get("age")?,
                     ..Default::default()
                 })
             })
@@ -63,8 +64,9 @@ impl User {
             .query_map([], |row| {
                 Ok(User {
                     pseudo: row.get("pseudo")?,
-                    age: row.get("age")?,
                     email: row.get("email")?,
+                    password: row.get("password")?,
+                    age: row.get("age")?,
                     ..Default::default()
                 })
             })

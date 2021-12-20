@@ -9,10 +9,11 @@ use rand::thread_rng;
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::my_errors::service_errors::ServiceError;
-// use crate::data_access_layer::users;
 
+// https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
+// ==> "Use Argon2id with a minimum configuration of 15 MiB of memory, an iteration count of 2, and 1 degree of parallelism."
 const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
-const T_COST: u32 = 4; // t_cost is the number of iterations;
+const T_COST: u32 = 2; // t_cost is the number of iterations;
 const P_COST: u32 = 1; //p_cost is the degree of parallelism.
 const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in bytes
 
@@ -20,6 +21,7 @@ const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in b
 pub struct CreateUser {
     pseudo: String,
     email: String,
+    password: String,
     #[serde(default)]
     age: u8,
 }
@@ -29,6 +31,7 @@ pub struct GetUser {
     pseudo: String,
 }
 
+// todo tester plein de requete pour voir comportement async
 pub async fn create_user(
     db: web::Data<AppState>,
     create_user_request: web::Json<CreateUser>,
@@ -44,16 +47,18 @@ pub async fn create_user(
     );
     
     let salt = SaltString::generate(&mut thread_rng());
-    let hashed_password = hasher.hash_password("nulPass".as_bytes(), &salt)
+
+    // TODO : This hashing is expensive and blocking, compute in async function
+    let hashed_password = hasher.hash_password(create_user_request.password.as_bytes(), &salt)
         .expect("Could not hash password"); // TODO : clean error
 
     let phc_string = hashed_password.to_string();
-    // println!("hash strinnnnggg {}", hashed_password);
-    // println!("hash strinnnnggg {}", phc_string);
-    // let rehash = PasswordHash::new(&phc_string).unwrap();
+    println!("hash strinnnnggg {}", hashed_password);
+    println!("hash strinnnnggg {}", phc_string);
+    let rehash = PasswordHash::new(&phc_string).unwrap();
 
-    // Argon2::default().verify_password("nulPass".as_bytes(), &hashed_password).expect("could not verify");
-    // Argon2::default().verify_password("nulPass".as_bytes(), &rehash).expect("could not verify");
+    Argon2::default().verify_password("nulPass".as_bytes(), &hashed_password).expect("could not verify");
+    Argon2::default().verify_password("nulPass".as_bytes(), &rehash).expect("could not verify");
 
     match user {
         Err(SqliteError::NotFound) => {
@@ -75,8 +80,6 @@ pub async fn create_user(
 }
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
-    println!("eeeee : {:?}", pseudo);
-    
     let user_found = data_access_layer::users::User::get_user(&db, pseudo).await;
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),

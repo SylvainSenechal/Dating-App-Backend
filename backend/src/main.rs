@@ -1,7 +1,7 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
 use rusqlite::{Connection};
 
-mod auth;
+// mod auth;
 mod data_access_layer;
 mod service_layer;
 mod my_errors;
@@ -77,10 +77,17 @@ async fn main() -> std::io::Result<()> {
                     )
                     .service(
                         web::resource("/{user_id}")
-                            .route(web::get().to(service_layer::users::get_user)), // .route(web::post().to(post_user))
-                                                                                            // .route(web::delete().to(delete_user))
-                                                                                            // .route(web::patch().to(update_user))
+                            .route(web::get().to(service_layer::users::get_user)), 
+                            // .route(web::delete().to(delete_user))
+                            // .route(web::patch().to(update_user))
                     ),
+            )
+            .service(
+                web::scope("/auth")
+                .service(
+                    web::resource("")
+                    .route(web::post().to(service_layer::auth::login))
+                )
             )
             .default_service(
                 web::resource("")
