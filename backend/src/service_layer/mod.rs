@@ -1,2 +1,2 @@
-pub mod users;
-pub mod auth;
+pub mod user_service;
+pub mod auth_service;

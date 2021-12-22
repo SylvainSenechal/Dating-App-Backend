@@ -72,12 +72,12 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/users")
                     .service(
                         web::resource("")
-                            .route(web::get().to(service_layer::users::get_users))
-                            .route(web::post().to(service_layer::users::create_user)),
+                            .route(web::get().to(service_layer::user_service::get_users))
+                            .route(web::post().to(service_layer::user_service::create_user)),
                     )
                     .service(
                         web::resource("/{user_id}")
-                            .route(web::get().to(service_layer::users::get_user)), 
+                            .route(web::get().to(service_layer::user_service::get_user)), 
                             // .route(web::delete().to(delete_user))
                             // .route(web::patch().to(update_user))
                     ),
@@ -86,7 +86,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/auth")
                 .service(
                     web::resource("")
-                    .route(web::post().to(service_layer::auth::login))
+                    .route(web::post().to(service_layer::auth_service::login))
                 )
             )
             .default_service(

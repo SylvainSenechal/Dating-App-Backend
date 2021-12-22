@@ -37,7 +37,7 @@ pub async fn create_user(
     create_user_request: web::Json<CreateUser>,
 ) -> actixResult<HttpResponse, ServiceError> {
 
-    let user = data_access_layer::users::User::get_user(&db, create_user_request.pseudo.to_string()).await;
+    let user = data_access_layer::user_dal::User::get_user(&db, create_user_request.pseudo.to_string()).await;
 
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
@@ -62,13 +62,13 @@ pub async fn create_user(
 
     match user {
         Err(SqliteError::NotFound) => {
-            let user = data_access_layer::users::User{
+            let user = data_access_layer::user_dal::User{
                 pseudo: create_user_request.pseudo.to_string(),
                 email: create_user_request.email.to_string(),
                 password: phc_string,
                 age: Some(create_user_request.age) // todo : check this some thing
             };
-            match data_access_layer::users::User::create_user(&db, user).await {
+            match data_access_layer::user_dal::User::create_user(&db, user).await {
                 Ok(()) => Ok(HttpResponse::Ok().body("User created")),
                 Err(err) => Err(ServiceError::SqliteError(err))
             }
@@ -80,7 +80,7 @@ pub async fn create_user(
 }
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
-    let user_found = data_access_layer::users::User::get_user(&db, pseudo).await;
+    let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo).await;
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => Err(ServiceError::SqliteError(err))
@@ -88,7 +88,7 @@ pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<Stri
 }
 
 pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
-    let users_found = data_access_layer::users::User::get_users(&db).await;
+    let users_found = data_access_layer::user_dal::User::get_users(&db).await;
     match users_found {
         Ok(users) => Ok(HttpResponse::Ok().json(users)),
         Err(err) => Err(ServiceError::SqliteError(err))

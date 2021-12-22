@@ -36,7 +36,7 @@ pub async fn login(
     db: web::Data<AppState>,
     login_user: web::Json<UserLoginRequest>
 ) -> actixResult<HttpResponse, ServiceError>{
-    let user_found = data_access_layer::users::User::get_user(&db, login_user.pseudo.to_string()).await;
+    let user_found = data_access_layer::user_dal::User::get_user(&db, login_user.pseudo.to_string()).await;
 
     match user_found {
         Ok(user) => {
