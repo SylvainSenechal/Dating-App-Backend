@@ -51,18 +51,11 @@ pub async fn create_user(
     // TODO : This hashing is expensive and blocking, compute in async function
     let hashed_password = hasher.hash_password(create_user_request.password.as_bytes(), &salt)
         .expect("Could not hash password"); // TODO : clean error
-
     let phc_string = hashed_password.to_string();
-    println!("hash strinnnnggg {}", hashed_password);
-    println!("hash strinnnnggg {}", phc_string);
-    let rehash = PasswordHash::new(&phc_string).unwrap();
-
-    Argon2::default().verify_password("nulPass".as_bytes(), &hashed_password).expect("could not verify");
-    Argon2::default().verify_password("nulPass".as_bytes(), &rehash).expect("could not verify");
 
     match user {
         Err(SqliteError::NotFound) => {
-            let user = data_access_layer::user_dal::User{
+            let user = data_access_layer::user_dal::UserCreation{
                 pseudo: create_user_request.pseudo.to_string(),
                 email: create_user_request.email.to_string(),
                 password: phc_string,

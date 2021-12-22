@@ -10,7 +10,7 @@ use crate::my_errors::sqlite_errors::SqliteError;
 pub enum ServiceError {
     ServiceError(String),
     SqliteError(SqliteError),
-    ArgonError,
+    LoginError,
     JwtError,
     UnknownServiceError
 }
@@ -20,7 +20,7 @@ impl ServiceError {
         match self {
             Self::ServiceError(_) => "Service layer error".to_string(),
             Self::SqliteError(_) => "Sqlite internal error".to_string(),
-            Self::ArgonError => "Argon internal error".to_string(),
+            Self::LoginError => "Login error".to_string(),
             Self::JwtError => "Jwt internal error".to_string(),
             Self::UnknownServiceError => "Unknown service layer error".to_string(),
         }
@@ -45,7 +45,7 @@ impl actix_web::ResponseError for ServiceError {
         match *self {
             Self::ServiceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::SqliteError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ArgonError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::LoginError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::JwtError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UnknownServiceError => StatusCode::INTERNAL_SERVER_ERROR,
         }

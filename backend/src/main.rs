@@ -6,6 +6,7 @@ mod data_access_layer;
 mod service_layer;
 mod my_errors;
 
+// TODO : benchmark auth login avec vrai pass pour voir si async utile
 // TODO : see and_then()
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 const DATABASE_NAME: &str = "love.db";

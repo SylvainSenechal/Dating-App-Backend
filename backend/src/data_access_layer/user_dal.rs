@@ -8,7 +8,18 @@ use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct User {
-    // todo : add ID
+    pub id: u32,
+    #[serde(default)]
+    pub pseudo: String,
+    #[serde(default)]
+    pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
+    pub password: String,
+    #[serde(default)]
+    pub age: Option<u8>, // todo : voir pourquoi option..
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct UserCreation {
     #[serde(default)]
     pub pseudo: String,
     #[serde(default)]
@@ -21,7 +32,7 @@ pub struct User {
 impl User {
     pub async fn create_user(
         db: &web::Data<AppState>,
-        user: User,
+        user: UserCreation,
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
@@ -43,6 +54,7 @@ impl User {
         let user_found = statement
             .query_row(params![pseudo], |row| {
                 Ok(User {
+                    id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
                     email: row.get("email")?,
                     password: row.get("password")?,
@@ -63,6 +75,7 @@ impl User {
         let result_rows = statement
             .query_map([], |row| {
                 Ok(User {
+                    id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
                     email: row.get("email")?,
                     password: row.get("password")?,
