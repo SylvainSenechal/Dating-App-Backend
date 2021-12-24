@@ -13,7 +13,7 @@ use crate::my_errors::service_errors::ServiceError;
 // https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 // ==> "Use Argon2id with a minimum configuration of 15 MiB of memory, an iteration count of 2, and 1 degree of parallelism."
 const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
-const T_COST: u32 = 2; // t_cost is the number of iterations;
+const T_COST: u32 = 1; // t_cost is the number of iterations;
 const P_COST: u32 = 1; //p_cost is the degree of parallelism.
 const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in bytes
 
