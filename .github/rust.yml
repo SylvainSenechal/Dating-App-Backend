@@ -16,6 +16,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Build
+      working-directory: databaseDriller
+      run: cargo build --verbose
     - name: Run tests
-      working-directory: ./databaseDriller
+      working-directory: databaseDriller
       run: cargo test --verbose
