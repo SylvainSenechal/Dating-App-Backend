@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
 
-    let fetches = tokio_stream::iter((0..500000).map(|id| {
+    let fetches = tokio_stream::iter((0..20).map(|id| {
         println!("{}", id);
 
         async {
@@ -57,18 +57,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .unwrap();
 
                 let res = response.json::<PersonResponse>().await.unwrap();
+                println!("{:?}", res);
                 // let res = PersonResponse{jwt_token: "oui".to_string(), message: "ok".to_string()};
                 return res;
             }
         }
     }))
-    .buffer_unordered(20)
+    .buffer_unordered(5)
     .collect::<Vec<_>>();
 
     let a = fetches.await;
 
     // print!("{:?}", a);
-    print!("end");
+    println!("end");
 
     Ok(())
 }

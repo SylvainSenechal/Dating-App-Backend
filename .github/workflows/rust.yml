@@ -22,3 +22,7 @@ jobs:
     - name: Run tests
       working-directory: ./backend
       run: cargo test --verbose
+
+    - name: driller
+      working-directory: ./databaseDriller
+      run: cargo run
