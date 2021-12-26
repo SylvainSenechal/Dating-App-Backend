@@ -1,98 +1,100 @@
-name: Rust
+# WIP : stop using monorepo I guess
+# Check these 2 :
+# https://www.homeops.dev/continuous-integration-with-github-actions-and-rust/
+# https://gist.github.com/LukeMathWalker/5ae1107432ce283310c3e601fac915f3
+# test, fmt, clippy, coverage(tarpaulin), code audit
 
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
+# name: Rust
+
+# on:
+#   push:
+#     branches: [ main ]
+#   pull_request:
+#     branches: [ main ]
+
+# env:
+#   CARGO_TERM_COLOR: always
 
 # jobs:
 #   build:
-
 #     runs-on: ubuntu-latest
-
 #     steps:
 #     - uses: actions/checkout@v2
-#     - name: Build
-#       working-directory: ./backend
-#       run: cargo build --verbose
 #     - name: Run tests
 #       working-directory: ./backend
 #       run: cargo test --verbose
 
-#     # TODO : make this works maybe in docker ayeeeee 
-#     # - name: driller
-#     #   working-directory: ./databaseDriller
-#     #   run: cargo run
+# #     # TODO : make this works maybe in docker ayeeeee 
+# #     # - name: driller
+# #     #   working-directory: ./databaseDriller
+# #     #   run: cargo run
 
 
+# # jobs:
+# #   fmt:
+# #     name: Rustfmt
+# #     runs-on: ubuntu-latest
+# #     defaults:
+# #       run:
+# #         working-directory: ./backend
+# #     steps:
+# #       - uses: actions/checkout@v2
+# #       - uses: actions-rs/toolchain@v1
+# #         with:
+# #           toolchain: stable
+# #           override: true
+# #           components: rustfmt
+# #       - uses: actions-rs/cargo@v1
+# #         with:
+# #           command: fmt
+# #           args: --all -- --check
+
+# defaults:
+#   run:
+#     working-directory: ./backend
 # jobs:
-#   fmt:
-#     name: Rustfmt
+#   check:
+#     name: Rust project
 #     runs-on: ubuntu-latest
-#     defaults:
-#       run:
-#         working-directory: ./backend
 #     steps:
 #       - uses: actions/checkout@v2
-#       - uses: actions-rs/toolchain@v1
-#         with:
-#           toolchain: stable
-#           override: true
-#           components: rustfmt
-#       - uses: actions-rs/cargo@v1
-#         with:
-#           command: fmt
-#           args: --all -- --check
-
-defaults:
-  run:
-    working-directory: ./backend
-jobs:
-  check:
-    name: Rust project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - name: Install latest nightly
-        uses: actions-rs/toolchain@v1
-        with:
-            toolchain: nightly
-            override: true
-            components: rustfmt, clippy
-
-      # `cargo check` command here will use installed `nightly`
-      # as it is set as an "override" for current directory
-
-      - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
-
-
-# Problem : can't cd directory in uses..
-
-# jobs:
-#   coverage:
-#     name: Code coverage
-#     runs-on: ubuntu-latest
-#     defaults:
-#       run:
-#         working-directory: ./backend
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v2
-
-#       - name: Install stable toolchain
+#       - name: Install latest nightly
 #         uses: actions-rs/toolchain@v1
 #         with:
-#           toolchain: stable
-#           override: true
+#             toolchain: nightly
+#             override: true
+#             components: rustfmt, clippy
 
-#       - name: Run cargo-tarpaulin
-#         uses: actions-rs/tarpaulin@v0.1
+#       # `cargo check` command here will use installed `nightly`
+#       # as it is set as an "override" for current directory
+
+#       - name: Run cargo check
+#         uses: actions-rs/cargo@v1
 #         with:
-#           args: '--ignore-tests'
+#           command: check
+
+
+# # Problem : can't cd directory in uses..
+
+# # jobs:
+# #   coverage:
+# #     name: Code coverage
+# #     runs-on: ubuntu-latest
+# #     defaults:
+# #       run:
+# #         working-directory: ./backend
+# #     steps:
+# #       - name: Checkout repository
+# #         uses: actions/checkout@v2
+
+# #       - name: Install stable toolchain
+# #         uses: actions-rs/toolchain@v1
+# #         with:
+# #           toolchain: stable
+# #           override: true
+
+# #       - name: Run cargo-tarpaulin
+# #         uses: actions-rs/tarpaulin@v0.1
+# #         with:
+# #           args: '--ignore-tests'
