@@ -43,8 +43,8 @@ jobs:
           toolchain: stable
           override: true
 
-        working-directory: ./backend
       - name: Run cargo-tarpaulin
         uses: actions-rs/tarpaulin@v0.1
         with:
+          working-directory: ./backend
           args: '--ignore-tests'
