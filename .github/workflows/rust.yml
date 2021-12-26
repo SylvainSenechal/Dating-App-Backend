@@ -9,20 +9,41 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+# jobs:
+#   build:
+
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - uses: actions/checkout@v2
+#     - name: Build
+#       working-directory: ./backend
+#       run: cargo build --verbose
+#     - name: Run tests
+#       working-directory: ./backend
+#       run: cargo test --verbose
+
+#     # TODO : make this works maybe in docker ayeeeee 
+#     # - name: driller
+#     #   working-directory: ./databaseDriller
+#     #   run: cargo run
+
+
 jobs:
-  build:
-
+  coverage:
+    name: Code coverage
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      working-directory: ./backend
-      run: cargo build --verbose
-    - name: Run tests
-      working-directory: ./backend
-      run: cargo test --verbose
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: driller
-      working-directory: ./databaseDriller
-      run: cargo run
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          args: '--ignore-tests'
