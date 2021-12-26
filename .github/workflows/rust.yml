@@ -48,14 +48,13 @@ env:
 #           command: fmt
 #           args: --all -- --check
 
-
+defaults:
+  run:
+    working-directory: ./backend
 jobs:
   check:
     name: Rust project
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
     steps:
       - uses: actions/checkout@v2
       - name: Install latest nightly
