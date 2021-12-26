@@ -30,24 +30,43 @@ env:
 
 
 jobs:
-  coverage:
-    name: Code coverage
+  fmt:
+    name: Rustfmt
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-        working-directory: ./backend
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
-
-      - name: Install stable toolchain
-        uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+          components: rustfmt
+      - uses: actions-rs/cargo@v1
         with:
-          args: '--ignore-tests'
+          command: fmt
+          args: --all -- --check
+
+
+
+# Problem : can't cd directory in uses..
+
+# jobs:
+#   coverage:
+#     name: Code coverage
+#     runs-on: ubuntu-latest
+#     defaults:
+#       run:
+#         working-directory: ./backend
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v2
+
+#       - name: Install stable toolchain
+#         uses: actions-rs/toolchain@v1
+#         with:
+#           toolchain: stable
+#           override: true
+
+#       - name: Run cargo-tarpaulin
+#         uses: actions-rs/tarpaulin@v0.1
+#         with:
+#           args: '--ignore-tests'
