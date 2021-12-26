@@ -34,9 +34,9 @@ jobs:
     name: Code coverage
     runs-on: ubuntu-latest
     defaults:
-    run:
-      shell: bash
-      working-directory: ./backend
+      run:
+        shell: bash
+        working-directory: ./backend
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
