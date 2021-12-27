@@ -1,5 +1,7 @@
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::http::header;
 use rusqlite::{Connection};
+use actix_cors::Cors;
 
 // mod auth;
 mod data_access_layer;
@@ -8,6 +10,7 @@ mod my_errors;
 
 // TODO : benchmark auth login avec vrai pass pour voir si async utile
 // TODO : see and_then()
+// TODO : Check swag generation
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 const DATABASE_NAME: &str = "love.db";
 
@@ -32,10 +35,10 @@ impl AppState {
                 person_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 pseudo TEXT NOT NULL UNIQUE,
                 password TEXT NOT NULL,
-                email TEXT NOT NULL UNIQUE,
                 age INTEGER
             )",
-                [],
+            // email TEXT NOT NULL UNIQUE,
+            [],
             )
             .expect("Could not create table persons");
     }
@@ -57,8 +60,17 @@ async fn main() -> std::io::Result<()> {
     let app: AppState = AppState::new();
     app.create_database();
 
+    
+    // TODO : Cors ELI5
     HttpServer::new(|| {
+        let cors = Cors::default()
+        .allowed_origin("http://localhost:3000")
+        .allowed_methods(vec!["GET", "POST"])
+        .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+        .allowed_header(header::CONTENT_TYPE)
+        .max_age(3600);
         App::new()
+            .wrap(cors)
             .data(AppState::new())
             .data(web::JsonConfig::default().error_handler(|err, _req| {
                 let e = format!("{:?}", err);
@@ -88,6 +100,10 @@ async fn main() -> std::io::Result<()> {
                 .service(
                     web::resource("")
                     .route(web::post().to(service_layer::auth_service::login))
+                )
+                .service(
+                    web::resource("/refresh")
+                    .route(web::post().to(service_layer::auth_service::token_refresh))
                 )
             )
             .default_service(

@@ -21,18 +21,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Hello, world!");
     let client = reqwest::Client::new();
     let person = UserLoginRequest {
-        pseudo: "sylv".to_string(),
-        password: "pass".to_string(),
+        pseudo: "aa".to_string(),
+        password: "aa".to_string(),
     };
 
 
-    let fetches = tokio_stream::iter((0..20).map(|id| {
+    let fetches = tokio_stream::iter((0..50).map(|id| {
         println!("{}", id);
 
         async {
             // println!("mew request started");
             let a = rand::thread_rng().gen_range(0..10);
-            if a >= 10 {
+            if a >= 50 {
                 let resp = client.get("http://localhost:8080/users/unUgser").send().await;//.unwrap();
                 match resp {
                     Ok(_) => (),

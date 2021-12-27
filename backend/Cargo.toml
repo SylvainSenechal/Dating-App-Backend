@@ -16,6 +16,7 @@ argon2 = "0.3.1"
 rand_core = { version = "0.6", features = ["std"] }
 hex-literal = "0.3"
 rand = "0.8"
+actix-cors = "0.5.4"
 
 # The core APIs, including the Serialize and Deserialize traits. Always
 # required when using Serde. The "derive" feature is only required when

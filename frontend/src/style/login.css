@@ -1,0 +1,78 @@
+body {
+    margin: 0;
+  }
+  
+  * {
+    box-sizing: border-box;
+    font-family: monospace;
+    /* background: #f0f2f5; */
+  }
+  
+  .LoginPage {
+    display: grid;
+    width: 100vw;
+    height: 100vh;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: 7fr 3fr;
+    grid-template-areas: '. formsLoginRegister formsLoginRegister formsLoginRegister formsLoginRegister .'
+                         'footer footer footer footer footer footer';
+    justify-items: stretch;
+    align-items: center;
+    justify-content: start;
+  }
+  
+  .formsLoginRegister {
+    grid-area: formsLoginRegister;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    margin: 60px;
+    box-shadow: 1px 2px 5px rgb(0 0 0 / 15%);
+    border-radius: 20px;
+  }
+  
+  .logInfo {
+    box-shadow: 1px 2px 5px rgb(0 0 0 / 15%);
+    padding: 10px;
+    margin: 20px;
+    width: 455px;
+    border-radius: 10px;
+    /* background: #ffffff; */
+    animation: dropIn 0.5s ease backwards, opa 1s ease forwards; 
+    animation-delay: calc(var(--order) * 0.5s);
+  }
+  
+  .logInfo > form > label {
+    color: darkblue;
+    height: 20px;
+    width: 200px;
+    margin-top: 10px;
+    margin-left: 10px;
+    /* text-align: right; */
+    clear: both;
+    float:left;
+    margin-right:15px;
+  }
+  .logInfo > form > input {
+    height: 20px;
+    width: 200px;
+    border: 1px solid #000;
+    margin-top: 10px;
+    float: left;
+  }
+  
+  @keyframes dropIn {from {transform: translateY(-800px);} to {transform: translateY(0px);}}
+  @keyframes opa {from {opacity: 0;} to {opacity: 1;}}
+  
+  .borderLine {
+    border-bottom: 1px solid #dadde1;
+    padding-bottom: 13px;
+    font-size: 14px;
+  }
+  
+  #footer {
+    grid-area: footer;
+    flex-direction: column;
+  }
+  

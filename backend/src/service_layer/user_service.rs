@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result as actixResult};
+use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result as actixResult, Responder};
 use argon2::{
     Algorithm, Argon2, Error, Params, ParamsBuilder, PasswordHash, PasswordHasher,
     PasswordVerifier, Version, password_hash::SaltString,
@@ -18,9 +18,9 @@ const P_COST: u32 = 1; //p_cost is the degree of parallelism.
 const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in bytes
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateUser {
+pub struct CreateUser { // TODO watch out redundant with create struct in userdal
     pseudo: String,
-    email: String,
+    // email: String,
     password: String,
     #[serde(default)]
     age: u8,
@@ -31,13 +31,20 @@ pub struct GetUser {
     pseudo: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct CreateUserResponse {
+    message: String
+}
+
 // todo tester plein de requete pour voir comportement async
 pub async fn create_user(
     db: web::Data<AppState>,
     create_user_request: web::Json<CreateUser>,
 ) -> actixResult<HttpResponse, ServiceError> {
+    print!("post 1");
 
-    let user = data_access_layer::user_dal::User::get_user(&db, create_user_request.pseudo.to_string()).await;
+    let user = data_access_layer::user_dal::User::get_user(&db, create_user_request.pseudo.to_string());
+    print!("post 2");
 
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
@@ -52,28 +59,34 @@ pub async fn create_user(
     let hashed_password = hasher.hash_password(create_user_request.password.as_bytes(), &salt)
         .expect("Could not hash password"); // TODO : clean error
     let phc_string = hashed_password.to_string();
+    print!("post 3");
 
     match user {
         Err(SqliteError::NotFound) => {
             let user = data_access_layer::user_dal::UserCreation{
                 pseudo: create_user_request.pseudo.to_string(),
-                email: create_user_request.email.to_string(),
+                // email: create_user_request.email.to_string(),
                 password: phc_string,
                 age: Some(create_user_request.age) // todo : check this some thing
             };
-            match data_access_layer::user_dal::User::create_user(&db, user).await {
-                Ok(()) => Ok(HttpResponse::Ok().body("User created")),
+            match data_access_layer::user_dal::User::create_user(&db, user) {
+                Ok(()) => Ok(HttpResponse::Ok().json(CreateUserResponse{message: "User created".to_string()})),
                 Err(err) => Err(ServiceError::SqliteError(err))
             }
              
         },
-        Ok(_) => Err(ServiceError::ServiceError("This user already exists".to_string())),
+        Ok(_) => {
+            print!("exists");
+            Err(ServiceError::UserAlreadyExist)
+        }
         Err(err) => Err(ServiceError::SqliteError(err))
     }
 }
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
-    let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo).await;
+    print!("exists");
+    
+    let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo);
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => Err(ServiceError::SqliteError(err))
@@ -81,7 +94,7 @@ pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<Stri
 }
 
 pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
-    let users_found = data_access_layer::user_dal::User::get_users(&db).await;
+    let users_found = data_access_layer::user_dal::User::get_users(&db);
     match users_found {
         Ok(users) => Ok(HttpResponse::Ok().json(users)),
         Err(err) => Err(ServiceError::SqliteError(err))

@@ -11,41 +11,42 @@ pub struct User {
     pub id: u32,
     #[serde(default)]
     pub pseudo: String,
-    #[serde(default)]
-    pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
+    // #[serde(default)]
+    // pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
     pub password: String,
     #[serde(default)]
     pub age: Option<u8>, // todo : voir pourquoi option..
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct UserCreation {
+pub struct UserCreation { // TODO watch out redundant with create struct in service user
     #[serde(default)]
     pub pseudo: String,
-    #[serde(default)]
-    pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
+    // #[serde(default)]
+    // pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
     pub password: String,
     #[serde(default)]
     pub age: Option<u8>, // todo : voir pourquoi option..
 }
 
 impl User {
-    pub async fn create_user(
+    pub fn create_user(
         db: &web::Data<AppState>,
         user: UserCreation,
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
-            .prepare("INSERT INTO users (pseudo, email, password, age) VALUES (?, ?, ?, ?)")
+            .prepare("INSERT INTO users (pseudo, password, age) VALUES (?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
-            .execute(params![user.pseudo, user.email, user.password, user.age])
+            .execute(params![user.pseudo, user.password, user.age])
+            // .execute(params![user.pseudo, user.email, user.password, user.age])
             .map_err(map_sqlite_error)?;
 
         Ok(())
     }
 
-    pub async fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
+    pub fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
             .prepare("SELECT * FROM users WHERE pseudo = ?")
@@ -56,7 +57,7 @@ impl User {
                 Ok(User {
                     id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
-                    email: row.get("email")?,
+                    // email: row.get("email")?,
                     password: row.get("password")?,
                     age: row.get("age")?,
                     ..Default::default()
@@ -67,7 +68,7 @@ impl User {
         Ok(user_found)
     }
 
-    pub async fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
+    pub fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
         let mut statement = db
             .connection
             .prepare("SELECT * FROM users")
@@ -77,7 +78,7 @@ impl User {
                 Ok(User {
                     id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
-                    email: row.get("email")?,
+                    // email: row.get("email")?,
                     password: row.get("password")?,
                     age: row.get("age")?,
                     ..Default::default()

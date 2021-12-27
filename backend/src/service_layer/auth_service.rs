@@ -17,15 +17,20 @@ use crate::{AppState, data_access_layer};
 
 const BEARER: &str = "Bearer ";
 const KEY_JWT: &[u8] = b"badObviousTestKey";
-const KEY_JWT_REFRESH: &str = "ohohoho";
-const TOKEN_LIFESPAN: usize = 30;
-const TOKEN_REFRESH_LIFESPAN: &str = "3600sec";
+const KEY_JWT_REFRESH: &[u8] = b"ohohoho";
+const TOKEN_LIFESPAN: usize = 10; // seconds
+const TOKEN_REFRESH_LIFESPAN: usize = 3600; // seconds
 const DEFAULT_HASH: &str = "$argon2id$v=19$m=15000,t=2,p=1$SZZVht0nCXacXAJU1dYJ8w$QwpNt6gUQ2K+dHQVDTf5H1mkkA0yTkXXKwZ6vHkKClQ";
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct UserLoginRequest {
     pseudo: String,
     password: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct TokenRefreshRequest {
+    refresh_token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -36,15 +41,23 @@ struct Claims {
 
 #[derive(Serialize)]
 struct LoginResponse {
-    jwt_token: String,
+    token: String,
+    refresh_token: String,
     message: String
 }
+
+#[derive(Serialize)]
+struct RefreshResponse {
+    token: String,
+}
+
+
 
 pub async fn login(
     db: web::Data<AppState>,
     login_user: web::Json<UserLoginRequest>
 ) -> actixResult<HttpResponse, ServiceError>{
-    let user_found = data_access_layer::user_dal::User::get_user(&db, login_user.pseudo.to_string()).await;
+    let user_found = data_access_layer::user_dal::User::get_user(&db, login_user.pseudo.to_string());
 
     match user_found {
         Ok(user) => {
@@ -57,21 +70,15 @@ pub async fn login(
                         sub: user.id,
                         exp: SystemTime::now().duration_since(UNIX_EPOCH).expect("failed getting current timestamp").as_secs() as usize + TOKEN_LIFESPAN
                     };
-                    let token = encode(&Header::default(), &my_claims, &EncodingKey::from_secret(KEY_JWT.as_ref())).expect("failed token creation");               
-                    print!("oui");
-                    let validation = Validation { ..Validation::default() };
-                    let token_data = match decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT.as_ref()), &validation) {
-                        Ok(c) => c,
-                        Err(err) => match *err.kind() {
-                            ErrorKind::InvalidToken => panic!("Token is invalid"), // Example on how to handle a specific error
-                            ErrorKind::InvalidIssuer => panic!("Issuer is invalid"), // Example on how to handle a specific error
-                            _ => panic!("Some other errors"),
-                        },
+                    let my_refresh_claims = Claims{
+                        sub: user.id,
+                        exp: SystemTime::now().duration_since(UNIX_EPOCH).expect("failed getting current timestamp").as_secs() as usize + TOKEN_REFRESH_LIFESPAN
                     };
-                    println!("{:?}", token_data.claims);
-                    println!("{:?}", token_data.header);
+                    let token = encode(&Header::default(), &my_claims, &EncodingKey::from_secret(KEY_JWT)).expect("failed token creation");               
+                    print!("oui");
+                    let refresh_token = encode(&Header::default(), &my_refresh_claims, &EncodingKey::from_secret(KEY_JWT_REFRESH)).expect("failed token creation");               
                     
-                    Ok(HttpResponse::Ok().json(LoginResponse{jwt_token: token, message: "Successfull login".to_string()}))
+                    Ok(HttpResponse::Ok().json(LoginResponse{token: token, refresh_token: refresh_token, message: "Successfull login".to_string()}))
                 }
                 Err(_) => Err(ServiceError::LoginError) // TODO use auth error perso,
             }
@@ -82,5 +89,26 @@ pub async fn login(
             let _ = Argon2::default().verify_password("AYAYA_CUTE_PASSWORD".as_bytes(), &rehash);
             Err(ServiceError::LoginError)
         }
+    }
+}
+
+pub async fn token_refresh(db: web::Data<AppState>, refresh_request: web::Json<TokenRefreshRequest>) -> actixResult<HttpResponse, ServiceError> {
+    let validation = Validation { ..Validation::default() };
+    let token_data = decode::<Claims>(&refresh_request.refresh_token, &DecodingKey::from_secret(KEY_JWT_REFRESH), &validation);
+    match token_data {
+        Ok(data) => {
+            println!("{:?}", data);
+            let my_claims = Claims{
+                sub: data.claims.sub,
+                exp: SystemTime::now().duration_since(UNIX_EPOCH).expect("failed getting current timestamp").as_secs() as usize + TOKEN_LIFESPAN
+            };
+            let token = encode(&Header::default(), &my_claims, &EncodingKey::from_secret(KEY_JWT)).expect("failed token creation");               
+            Ok(HttpResponse::Ok().json(RefreshResponse{token: token}))
+        },
+        Err(err) => match *err.kind() {
+            ErrorKind::InvalidToken => panic!("Token is invalid"), // Example on how to handle a specific error
+            ErrorKind::InvalidIssuer => panic!("Issuer is invalid"), // Example on how to handle a specific error
+            _ => Err(ServiceError::JwtError),
+        },
     }
 }
