@@ -9,26 +9,14 @@ use rand::thread_rng;
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::my_errors::service_errors::ServiceError;
-
-// https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
-// ==> "Use Argon2id with a minimum configuration of 15 MiB of memory, an iteration count of 2, and 1 degree of parallelism."
-const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes
-const T_COST: u32 = 1; // t_cost is the number of iterations;
-const P_COST: u32 = 1; //p_cost is the degree of parallelism.
-const OUTPUT_LEN: usize = 32; // determines the length of the returned hash in bytes
+use crate::constants::constants::{M_COST, T_COST, P_COST, OUTPUT_LEN};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateUser { // TODO watch out redundant with create struct in userdal
-    pseudo: String,
-    // email: String,
-    password: String,
+pub struct CreateUserRequest {
+    pub pseudo: String,
+    pub password: String,
     #[serde(default)]
-    age: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct GetUser {
-    pseudo: String,
+    pub age: Option<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -36,16 +24,11 @@ pub struct CreateUserResponse {
     message: String
 }
 
-// todo tester plein de requete pour voir comportement async
 pub async fn create_user(
     db: web::Data<AppState>,
-    create_user_request: web::Json<CreateUser>,
+    mut create_user_request: web::Json<CreateUserRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    print!("post 1");
-
     let user = data_access_layer::user_dal::User::get_user(&db, create_user_request.pseudo.to_string());
-    print!("post 2");
-
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,
@@ -54,29 +37,19 @@ pub async fn create_user(
     );
     
     let salt = SaltString::generate(&mut thread_rng());
-
-    // TODO : This hashing is expensive and blocking, compute in async function
     let hashed_password = hasher.hash_password(create_user_request.password.as_bytes(), &salt)
         .expect("Could not hash password"); // TODO : clean error
     let phc_string = hashed_password.to_string();
-    print!("post 3");
-
     match user {
         Err(SqliteError::NotFound) => {
-            let user = data_access_layer::user_dal::UserCreation{
-                pseudo: create_user_request.pseudo.to_string(),
-                // email: create_user_request.email.to_string(),
-                password: phc_string,
-                age: Some(create_user_request.age) // todo : check this some thing
-            };
-            match data_access_layer::user_dal::User::create_user(&db, user) {
+            // todo : check the option age field : post with and without age, with and without impl default
+            create_user_request.password = phc_string;
+            match data_access_layer::user_dal::User::create_user(&db, create_user_request.into_inner()) {
                 Ok(()) => Ok(HttpResponse::Ok().json(CreateUserResponse{message: "User created".to_string()})),
                 Err(err) => Err(ServiceError::SqliteError(err))
             }
-             
         },
         Ok(_) => {
-            print!("exists");
             Err(ServiceError::UserAlreadyExist)
         }
         Err(err) => Err(ServiceError::SqliteError(err))
@@ -84,8 +57,6 @@ pub async fn create_user(
 }
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
-    print!("exists");
-    
     let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo);
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),

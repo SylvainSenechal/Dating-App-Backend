@@ -44,18 +44,19 @@ const Login = ({ setUser }) => {
     console.log(readableResult.status)
     if (result.status === 200) { // login successfull
       setUser(prev => ({ ...prev, token: readableResult.token, refreshToken: readableResult.refresh_token, loggedIn: true, keepConnected: keepConnected }))
+      console.log("connexion")
+      if (keepConnected) {
+        console.log("keep")
 
+        window.localStorage.setItem('refreshToken', readableResult.refresh_token)
+      } else {
+        console.log("dont keep")
+
+        window.sessionStorage.setItem('refreshToken', readableResult.refresh_token)
+      }
+      console.log(window.localStorage)
+      console.log(window.sessionStorage)
     }
-    // if (readableResult.message === "Authentication successful") {
-    //   setUser(prev => ({ ...prev, token: readableResult.token, refreshToken: readableResult.refreshToken, loggedIn: true, keepConnected: keepConnected }))
-    //   if (keepConnected) {
-    //     window.localStorage.setItem('refreshToken', readableResult.refreshToken)
-    //   } else {
-    //     window.sessionStorage.setItem('refreshToken', readableResult.refreshToken)
-    //   }
-    //   console.log(window.localStorage)
-    //   console.log(window.sessionStorage)
-    // }
   }
 
   return (

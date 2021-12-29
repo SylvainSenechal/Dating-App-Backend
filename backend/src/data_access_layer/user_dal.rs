@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::service_layer::user_service::{CreateUserRequest};
 use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -11,19 +12,6 @@ pub struct User {
     pub id: u32,
     #[serde(default)]
     pub pseudo: String,
-    // #[serde(default)]
-    // pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
-    pub password: String,
-    #[serde(default)]
-    pub age: Option<u8>, // todo : voir pourquoi option..
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct UserCreation { // TODO watch out redundant with create struct in service user
-    #[serde(default)]
-    pub pseudo: String,
-    // #[serde(default)]
-    // pub email: String, // use option instead, see what returning json option does (maybe serde remove option none ?)
     pub password: String,
     #[serde(default)]
     pub age: Option<u8>, // todo : voir pourquoi option..
@@ -32,7 +20,7 @@ pub struct UserCreation { // TODO watch out redundant with create struct in serv
 impl User {
     pub fn create_user(
         db: &web::Data<AppState>,
-        user: UserCreation,
+        user: CreateUserRequest,
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
@@ -40,7 +28,6 @@ impl User {
             .map_err(map_sqlite_error)?;
         statement
             .execute(params![user.pseudo, user.password, user.age])
-            // .execute(params![user.pseudo, user.email, user.password, user.age])
             .map_err(map_sqlite_error)?;
 
         Ok(())

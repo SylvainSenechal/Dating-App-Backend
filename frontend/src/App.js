@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import Login from './Login';
-// import Dashboard from './Dashboard';
+import Dashboard from './Dashboard';
+
+
+// TODO : utiliser session storage au lieu de user
 
 const App = props => {
   console.log('App props : ', props)
@@ -17,18 +20,22 @@ const App = props => {
   useEffect(() => { // This is only to restore the "keep me connected" session
     const restoreSession = async () => {
       const refreshToken = window.localStorage.getItem('refreshToken')
+      console.log(refreshToken)
       if (refreshToken !== '' && refreshToken !== null) {
         const tokenData64URL = refreshToken.split('.')[1]
         const tokenB64 = tokenData64URL.replace(/-/g, '+').replace(/_/g, '/')
         const tokenPayload = JSON.parse(atob(tokenB64))
         const { pseudo, userId, iat, exp } = tokenPayload
+        console.log(exp)
+        console.log(Date.now() / 1000  + 5)
         if (Date.now() / 1000  + 5 < exp) { // 5 secs of margin 
+          console.log("relogging")
           const result = await fetch(`http://localhost:8080/auth/refresh`, { // todo check error on this
             method: 'POST', // *GET, POST, PUT, DELETE, etc.
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ refresh_token: user.refreshToken })
+            body: JSON.stringify({ refresh_token: refreshToken })
           })
           const readableResult = await result.json()
           setUser({
@@ -87,26 +94,9 @@ const App = props => {
     return () => clearTimeout(timer);
   }, [user])
 
-  console.log(window.location.href)
-  const a = new URL(window.location.href)
-  // http://localhost:3000/?user=1
-  console.log(a)
-  console.log(a.searchParams)
-  console.log(a.searchParams.get("user"))
-  if (new URL(window.location.href).searchParams.get("user")) {
-    console.log('trouve')
-  } else {
-    console.log('non')
-  }
-
-  // return user.loggedIn
-  //   ? <Dashboard user={user} setUser={setUser} />
-  //   : <Login setUser={setUser} />
-
   return user.loggedIn
-    ? <div> oui </div>
+    ? <Dashboard user={user} setUser={setUser} />
     : <Login setUser={setUser} />
-
 }
 
 export default App;

@@ -1,0 +1,146 @@
+#dashboardOut {
+    background: 
+    linear-gradient(155deg, rgba(220, 195, 235, 0.8), rgba(255,0,0,0) 40%),
+    linear-gradient(260deg, rgba(150,208,227, 0) 60%, rgba(150,208,227,0.8) 100%),
+    linear-gradient(340deg, rgba(176, 122, 208, 0.8), rgba(0,255,0,0) 40%);
+    padding: 40px; 
+    /* todo add variable for padding width height calc */
+  }
+  
+  #dashboardIn {
+    display: grid;
+    width: calc(100vw - 80px);
+    height: calc(100vh - 80px);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 1px 2px 5px rgb(0 0 0 / 15%);
+    border-radius: 40px;
+    grid-gap: 10px;
+    padding: 30px;
+    grid-template-columns: repeat(6, 1fr);
+    grid-template-rows: 1fr 7fr 2fr;
+    grid-template-areas: 'infos infos search search showRequest logout'
+                         'friends friends wall wall wall wall'
+                         'legals legals footer footer footer footer';
+    justify-items: stretch;
+    align-items: center;
+    justify-content: start;
+  }
+  
+  .dashboardElement {
+    background: rgba(255, 255, 255, 0.25);
+    box-shadow: 1px 2px 5px rgb(0 0 0 / 15%);
+    padding: 15px;
+    border-radius: 30px;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+  }
+  
+  #infos {
+    grid-area: infos;
+  }
+  
+  #search {
+    grid-area: search;
+    display: flex;
+  }
+  
+  #logout {
+    grid-area: logout;
+  }
+  
+  #friends {
+    grid-area: friends;
+  }
+  
+  #showRequest {
+    grid-area: showRequest;
+  }
+  
+  .ownPost, .postFriend {
+    display: grid;
+    grid-template-columns: 2fr 8fr 1fr;
+    /* grid-template-areas: 'id pseudo message likes'; */
+    grid-template-areas: 'pseudo message likes';
+    border-bottom: 1px solid grey;
+  }
+  
+  .ownPost:hover, .postFriend:hover {
+    background: gray;
+  }
+  
+  /* .idPost {
+    grid-area: id;
+  } */
+  .pseudoPost {
+    grid-area: pseudo;
+  }
+  .messagePost {
+    grid-area: message;
+    overflow-wrap: anywhere;
+  }
+  .likesPost {
+    grid-area: likes;
+    position: relative;
+  }
+  .likesPost > button {
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  
+  .listOfLikers {
+    display: none;
+  }
+  
+  .likesPost:hover .listOfLikers{
+    display: flex;
+    flex-direction: column;
+    position: absolute;
+    background: white;
+    left: 25px;
+    z-index: 1;
+  }
+  
+  .listOfLikers {
+    width: 100px;
+  }
+  
+  .ownPost {
+    /* background: red; */
+  }
+  
+  .postFriend {
+    /* background: green; */
+  }
+  
+  #wall {
+    grid-area: wall;
+  }
+  
+  #postMessage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  #postMessage > * {
+    margin-right: 10px;
+  }
+  
+  #postMessage > textarea {
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    box-shadow: 1px 1px 1px #999;
+  }
+  
+  
+  
+  #legals {
+    grid-area: legals;
+  }
+  
+  #footer {
+    grid-area: footer;
+  }

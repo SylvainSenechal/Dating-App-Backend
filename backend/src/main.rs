@@ -7,12 +7,12 @@ use actix_cors::Cors;
 mod data_access_layer;
 mod service_layer;
 mod my_errors;
+mod constants;
 
-// TODO : benchmark auth login avec vrai pass pour voir si async utile
+use constants::constants::{DATABASE_NAME};
 // TODO : see and_then()
 // TODO : Check swag generation
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
-const DATABASE_NAME: &str = "love.db";
 
 pub struct AppState {
     connection: Connection,
@@ -120,17 +120,4 @@ async fn main() -> std::io::Result<()> {
     .bind("127.0.0.1:8080")?
     .run()
     .await
-
-    // let p = Person{age: 25, pseudo: "sylvain".to_string(), ..Default::default()};
-    // Person::create_person(&app.connection,p)?;
-    // Person::get_persons(&app.connection)?;
-    // match Person::get_person(&app.connection, "hugokjhui") {
-    //     Ok(val) => println!("on : {:?}", val),
-    //     Err(e) => println!("nope : {:?}", e)
-    // }
-    // println!("getting one person : {:?}", Person::get_person(&app.connection, "hugo"));
-    // let a = Person{..Default::default()};
-    // println!("getting one  : {:?}", a);
-
-    // Ok(())
 }

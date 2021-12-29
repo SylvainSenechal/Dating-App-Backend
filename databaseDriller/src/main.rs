@@ -26,13 +26,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
 
-    let fetches = tokio_stream::iter((0..50).map(|id| {
+    let fetches = tokio_stream::iter((0..500000).map(|id| {
         println!("{}", id);
 
         async {
             // println!("mew request started");
             let a = rand::thread_rng().gen_range(0..10);
-            if a >= 50 {
+            if a >= 0 {
                 let resp = client.get("http://localhost:8080/users/unUgser").send().await;//.unwrap();
                 match resp {
                     Ok(_) => (),

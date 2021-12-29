@@ -1,4 +1,3 @@
-
 use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
 use jsonwebtoken::errors::ErrorKind;
 
@@ -14,13 +13,7 @@ use serde::{Deserialize, Serialize};
 use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result as actixResult};
 use crate::my_errors::service_errors::ServiceError;
 use crate::{AppState, data_access_layer};
-
-const BEARER: &str = "Bearer ";
-const KEY_JWT: &[u8] = b"badObviousTestKey";
-const KEY_JWT_REFRESH: &[u8] = b"ohohoho";
-const TOKEN_LIFESPAN: usize = 10; // seconds
-const TOKEN_REFRESH_LIFESPAN: usize = 3600; // seconds
-const DEFAULT_HASH: &str = "$argon2id$v=19$m=15000,t=2,p=1$SZZVht0nCXacXAJU1dYJ8w$QwpNt6gUQ2K+dHQVDTf5H1mkkA0yTkXXKwZ6vHkKClQ";
+use crate::constants::constants::{BEARER, KEY_JWT, KEY_JWT_REFRESH, TOKEN_LIFESPAN, TOKEN_REFRESH_LIFESPAN, DEFAULT_HASH};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct UserLoginRequest {
@@ -50,8 +43,6 @@ struct LoginResponse {
 struct RefreshResponse {
     token: String,
 }
-
-
 
 pub async fn login(
     db: web::Data<AppState>,
