@@ -1,19 +1,16 @@
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
 use jsonwebtoken::errors::ErrorKind;
-
-use argon2::{
-    password_hash::{
-        rand_core::OsRng,
-        PasswordHash, PasswordHasher, PasswordVerifier, SaltString
-    },
-    Argon2
-};
-use std::{time, time::{SystemTime, UNIX_EPOCH}, ops::Add};
+use argon2::{password_hash::{PasswordHash, PasswordVerifier}, Argon2};
+use std::time::{SystemTime, UNIX_EPOCH};
 use serde::{Deserialize, Serialize};
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result as actixResult};
+use actix_web::{dev, web, FromRequest, Error, HttpRequest, HttpResponse, Result as actixResult, error::ErrorUnauthorized};
+use futures::future::{err, ok, Ready};
+
 use crate::my_errors::service_errors::ServiceError;
 use crate::{AppState, data_access_layer};
 use crate::constants::constants::{BEARER, KEY_JWT, KEY_JWT_REFRESH, TOKEN_LIFESPAN, TOKEN_REFRESH_LIFESPAN, DEFAULT_HASH};
+
+// JWT : https://github.com/Keats/jsonwebtoken#validation
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct UserLoginRequest {
@@ -83,7 +80,7 @@ pub async fn login(
     }
 }
 
-pub async fn token_refresh(db: web::Data<AppState>, refresh_request: web::Json<TokenRefreshRequest>) -> actixResult<HttpResponse, ServiceError> {
+pub async fn token_refresh(refresh_request: web::Json<TokenRefreshRequest>) -> actixResult<HttpResponse, ServiceError> {
     let validation = Validation { ..Validation::default() };
     let token_data = decode::<Claims>(&refresh_request.refresh_token, &DecodingKey::from_secret(KEY_JWT_REFRESH), &validation);
     match token_data {
@@ -104,13 +101,6 @@ pub async fn token_refresh(db: web::Data<AppState>, refresh_request: web::Json<T
     }
 }
 
-
-   
-use actix_web::error::ErrorUnauthorized;
-use actix_web::{dev, Error, FromRequest, HttpRequest};
-use futures::future::{err, ok, Ready};
-
-
 pub struct AuthorizationUser{
     pub id: u32
 }
@@ -127,24 +117,23 @@ impl FromRequest for AuthorizationUser {
                 if let Ok(header) = val.to_str() {
                     println!("header {}", header);
 
-                    if header.starts_with("Bearer") {
+                    if header.starts_with(BEARER) {
                         let token = header[6..header.len()].trim();
                         println!("token {}", token);
                     }
                 } 
                 let _split: Vec<&str> = _auth.unwrap().to_str().unwrap().split("Bearer").collect();
                 let token = _split[1].trim();
-
                 let validation = Validation { ..Validation::default() };
                 let token_data = decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT), &validation);
 
                 match token_data {
                     Ok(data) => {
-                        println!("ok auth");
+                        println!("ok auth"); // todo : add loggin
                         return ok(AuthorizationUser{id: data.claims.sub})
                     }
                     Err(e) => {
-                        println!("PAS ok auth");
+                        println!("PAS ok auth {}", e);
                         return err(ErrorUnauthorized("invalid token!"))
                     }
                 }

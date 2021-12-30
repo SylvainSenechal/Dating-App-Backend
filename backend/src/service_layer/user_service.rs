@@ -1,9 +1,6 @@
 use serde::{Deserialize, Serialize};
-use actix_web::{middleware, web, App, HttpResponse, HttpServer, Result as actixResult, Responder};
-use argon2::{
-    Algorithm, Argon2, Error, Params, ParamsBuilder, PasswordHash, PasswordHasher,
-    PasswordVerifier, Version, password_hash::SaltString,
-};
+use actix_web::{web, HttpResponse, Result as actixResult};
+use argon2::{Algorithm, Argon2, Params, PasswordHasher, Version, password_hash::SaltString};
 use rand::thread_rng;
 
 use crate::{AppState, data_access_layer};
