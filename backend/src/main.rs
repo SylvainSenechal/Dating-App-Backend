@@ -93,7 +93,12 @@ async fn main() -> std::io::Result<()> {
                             .route(web::get().to(service_layer::user_service::get_user)), 
                             // .route(web::delete().to(delete_user))
                             // .route(web::patch().to(update_user))
-                    ),
+                    )
+                 
+            )
+            .service(
+                web::resource("/photos")
+                    .route(web::post().to(service_layer::photos_service::save_file)), 
             )
             .service(
                 web::scope("/auth")

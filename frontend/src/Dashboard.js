@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ImageUploader from './ImageUploader';
 
 const Dashboard = ({ user, setUser }) => {
   console.log(user)
@@ -35,6 +36,7 @@ console.log(tokenPayload)
         <div id="logout" className="dashboardElement">
           <button onClick={logout}> Logout </button>
         </div>
+        <ImageUploader token={user.token} />
       </div>
     </div>
   )

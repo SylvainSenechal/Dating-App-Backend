@@ -96,10 +96,60 @@ pub async fn token_refresh(db: web::Data<AppState>, refresh_request: web::Json<T
             let token = encode(&Header::default(), &my_claims, &EncodingKey::from_secret(KEY_JWT)).expect("failed token creation");               
             Ok(HttpResponse::Ok().json(RefreshResponse{token: token}))
         },
-        Err(err) => match *err.kind() {
+        Err(e) => match *e.kind() {
             ErrorKind::InvalidToken => panic!("Token is invalid"), // Example on how to handle a specific error
             ErrorKind::InvalidIssuer => panic!("Issuer is invalid"), // Example on how to handle a specific error
             _ => Err(ServiceError::JwtError),
         },
+    }
+}
+
+
+   
+use actix_web::error::ErrorUnauthorized;
+use actix_web::{dev, Error, FromRequest, HttpRequest};
+use futures::future::{err, ok, Ready};
+
+
+pub struct AuthorizationUser{
+    pub id: u32
+}
+
+impl FromRequest for AuthorizationUser {
+    type Error = Error;
+    type Future = Ready<Result<AuthorizationUser, Error>>;
+    type Config = ();
+
+    fn from_request(_req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
+        let _auth = _req.headers().get("Authorization");
+        match _auth {
+            Some(val) => {
+                if let Ok(header) = val.to_str() {
+                    println!("header {}", header);
+
+                    if header.starts_with("Bearer") {
+                        let token = header[6..header.len()].trim();
+                        println!("token {}", token);
+                    }
+                } 
+                let _split: Vec<&str> = _auth.unwrap().to_str().unwrap().split("Bearer").collect();
+                let token = _split[1].trim();
+
+                let validation = Validation { ..Validation::default() };
+                let token_data = decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT), &validation);
+
+                match token_data {
+                    Ok(data) => {
+                        println!("ok auth");
+                        return ok(AuthorizationUser{id: data.claims.sub})
+                    }
+                    Err(e) => {
+                        println!("PAS ok auth");
+                        return err(ErrorUnauthorized("invalid token!"))
+                    }
+                }
+            }
+            None => err(ErrorUnauthorized("blocked!")),
+        }
     }
 }

@@ -39,7 +39,7 @@ const Login = ({ setUser }) => {
     const readableResult = await result.json()
 
     console.log(result)
-    console.log("hehe")
+    console.log("heeehe")
     console.log(readableResult)
     console.log(readableResult.status)
     if (result.status === 200) { // login successfull
@@ -92,6 +92,10 @@ const Login = ({ setUser }) => {
           </form>
         </div>
       </div>
+      {/* <form action="http://localhost:8080/photos" method="post" encType="multipart/form-data">
+        <input type="file" multiple name="file"/>
+        <button type="submit">Submit</button>
+      </form> */}
       {/* < Footer /> */}
     </div>
   )
