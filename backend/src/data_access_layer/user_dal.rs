@@ -36,7 +36,7 @@ impl User {
     pub fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
-            .prepare("SELECT * FROM users WHERE pseudo = ?")
+            .prepare_cached("SELECT * FROM users WHERE pseudo = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement

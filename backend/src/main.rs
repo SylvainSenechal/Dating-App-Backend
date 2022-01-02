@@ -22,6 +22,23 @@ impl AppState {
     fn new() -> AppState {
         let connection =
             Connection::open(DATABASE_NAME).expect("Could not connect to the database");
+        let res1 = connection.query_row(
+            "PRAGMA journal_mode = WAL;",
+            [],
+            |row| {
+                let res: String = row.get(0).unwrap();
+                Ok(res)
+            }
+        );//.expect("err pragma 1");
+        let res2 = connection.execute("PRAGMA synchronous = 0;", []);//.expect("err pragma 2");
+        let res3 = connection.execute("PRAGMA cache_size = 1000000;", []);//.expect("err pragma 3");
+        // let _ = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
+        // let res4 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
+
+        println!("1 {:?}", res1);
+        println!("2 {:?}", res2);
+        println!("3 {:?}", res3);
+        // println!("4 {:?}", res4);
         AppState {
             connection: connection,
         }
@@ -41,6 +58,12 @@ impl AppState {
             [],
             )
             .expect("Could not create table persons");
+        // self.connection
+        //     .execute(
+        //         "CREATE INDEX nomIndex ON users(pseudo)",
+        //     [],
+        //     )
+        //     .expect("Could not create index on table persons");
     }
 }
 
@@ -80,7 +103,7 @@ async fn main() -> std::io::Result<()> {
                 )
                 .into()
             }))
-            .wrap(middleware::Logger::default())
+            // .wrap(middleware::Logger::default())
             .service(
                 web::scope("/users")
                     .service(

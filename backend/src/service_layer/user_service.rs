@@ -5,6 +5,7 @@ use rand::thread_rng;
 
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::constants::constants::{M_COST, T_COST, P_COST, OUTPUT_LEN};
 
@@ -55,6 +56,13 @@ pub async fn create_user(
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
     let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo);
+    // let u = User {
+    //     pseudo: "sylvain".to_string(),
+    //     id: 3,
+    //     password: "ee".to_string(),
+    //     age: Some(9)
+    // };
+    // Ok(HttpResponse::Ok().json(u))
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => Err(ServiceError::SqliteError(err))
