@@ -58,12 +58,12 @@ impl AppState {
             [],
             )
             .expect("Could not create table persons");
-        // self.connection
-        //     .execute(
-        //         "CREATE INDEX nomIndex ON users(pseudo)",
-        //     [],
-        //     )
-        //     .expect("Could not create index on table persons");
+        self.connection
+            .execute(
+                "CREATE INDEX IF NOT EXISTS nomIndex ON users(pseudo)",
+            [],
+            )
+            .expect("Could not create index on table persons");
     }
 }
 
@@ -92,6 +92,8 @@ async fn main() -> std::io::Result<()> {
         .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
         .allowed_header(header::CONTENT_TYPE)
         .max_age(3600);
+        // .service(web::resource("/something").route(web::post().to(create_something)))
+
         App::new()
             .wrap(cors)
             .data(AppState::new())
@@ -103,37 +105,15 @@ async fn main() -> std::io::Result<()> {
                 )
                 .into()
             }))
-            // .wrap(middleware::Logger::default())
-            .service(
-                web::scope("/users")
-                    .service(
-                        web::resource("")
-                            .route(web::get().to(service_layer::user_service::get_users))
-                            .route(web::post().to(service_layer::user_service::create_user)),
-                    )
-                    .service(
-                        web::resource("/{user_id}")
-                            .route(web::get().to(service_layer::user_service::get_user)), 
-                            // .route(web::delete().to(delete_user))
-                            // .route(web::patch().to(update_user))
-                    )
-                 
+            .wrap(middleware::Logger::default())
+            .service(web::resource("/users")
+                .route(web::post().to(service_layer::user_service::create_user))
+                .route(web::get().to(service_layer::user_service::get_users))
             )
-            .service(
-                web::resource("/photos")
-                    .route(web::post().to(service_layer::photos_service::save_file)), 
-            )
-            .service(
-                web::scope("/auth")
-                .service(
-                    web::resource("")
-                    .route(web::post().to(service_layer::auth_service::login))
-                )
-                .service(
-                    web::resource("/refresh")
-                    .route(web::post().to(service_layer::auth_service::token_refresh))
-                )
-            )
+            .service(web::resource("/users/{user_id}").route(web::get().to(service_layer::user_service::get_user)))
+            .service(web::resource("/photos").route(web::post().to(service_layer::photos_service::save_file)))
+            .service(web::resource("/auth").route(web::post().to(service_layer::auth_service::login)))
+            .service(web::resource("/auth/refresh").route(web::post().to(service_layer::auth_service::token_refresh)))
             .default_service(
                 web::resource("")
                     // TODO : revoir ca
