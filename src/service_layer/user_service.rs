@@ -26,7 +26,7 @@ pub async fn create_user(
     db: web::Data<AppState>,
     mut create_user_request: web::Json<CreateUserRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    let user = data_access_layer::user_dal::User::get_user(&db, create_user_request.pseudo.to_string());
+    let user = data_access_layer::user_dal::User::get_user_by_pseudo(&db, create_user_request.pseudo.to_string());
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,
@@ -54,8 +54,8 @@ pub async fn create_user(
     }
 }
 
-pub async fn get_user(db: web::Data<AppState>, web::Path(pseudo): web::Path<String>) -> actixResult<HttpResponse, ServiceError> {
-    let user_found = data_access_layer::user_dal::User::get_user(&db, pseudo);
+pub async fn get_user(db: web::Data<AppState>, web::Path(userId): web::Path<u32>) -> actixResult<HttpResponse, ServiceError> {
+    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, userId);
     // let u = User {
     //     pseudo: "sylvain".to_string(),
     //     id: 3,

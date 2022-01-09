@@ -33,7 +33,7 @@ impl User {
         Ok(())
     }
 
-    pub fn get_user(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
+    pub fn get_user_by_pseudo(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
             .prepare_cached("SELECT * FROM users WHERE pseudo = ?")
@@ -41,6 +41,28 @@ impl User {
 
         let user_found = statement
             .query_row(params![pseudo], |row| {
+                Ok(User {
+                    id: row.get("person_id")?,
+                    pseudo: row.get("pseudo")?,
+                    // email: row.get("email")?,
+                    password: row.get("password")?,
+                    age: row.get("age")?,
+                    ..Default::default()
+                })
+            })
+            .map_err(map_sqlite_error)?;
+
+        Ok(user_found)
+    }
+
+    pub fn get_user_by_id(db: &web::Data<AppState>, userId: u32) -> Result<User, SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare_cached("SELECT * FROM users WHERE person_id = ?")
+            .map_err(map_sqlite_error)?;
+
+        let user_found = statement
+            .query_row(params![userId], |row| {
                 Ok(User {
                     id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
