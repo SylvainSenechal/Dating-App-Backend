@@ -1,15 +1,15 @@
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use actix_web::http::header;
-use rusqlite::{Connection};
 use actix_cors::Cors;
+use actix_web::http::header;
+use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use rusqlite::Connection;
 
 // mod auth;
-mod data_access_layer;
-mod service_layer;
-mod my_errors;
 mod constants;
+mod data_access_layer;
+mod my_errors;
+mod service_layer;
 
-use constants::constants::{DATABASE_NAME};
+use constants::constants::DATABASE_NAME;
 // TODO : see and_then()
 // TODO : Check swag generation
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
@@ -22,18 +22,14 @@ impl AppState {
     fn new() -> AppState {
         let connection =
             Connection::open(DATABASE_NAME).expect("Could not connect to the database");
-        let res1 = connection.query_row(
-            "PRAGMA journal_mode = WAL;",
-            [],
-            |row| {
-                let res: String = row.get(0).unwrap();
-                Ok(res)
-            }
-        );//.expect("err pragma 1");
-        let res2 = connection.execute("PRAGMA synchronous = 0;", []);//.expect("err pragma 2");
-        let res3 = connection.execute("PRAGMA cache_size = 1000000;", []);//.expect("err pragma 3");
-        // let _ = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
-        // let res4 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
+        let res1 = connection.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+            let res: String = row.get(0).unwrap();
+            Ok(res)
+        }); //.expect("err pragma 1");
+        let res2 = connection.execute("PRAGMA synchronous = 0;", []); //.expect("err pragma 2");
+        let res3 = connection.execute("PRAGMA cache_size = 1000000;", []); //.expect("err pragma 3");
+                                                                           // let _ = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
+                                                                           // let res4 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
 
         println!("1 {:?}", res1);
         println!("2 {:?}", res2);
@@ -54,15 +50,12 @@ impl AppState {
                 password TEXT NOT NULL,
                 age INTEGER
             )",
-            // email TEXT NOT NULL UNIQUE,
-            [],
+                // email TEXT NOT NULL UNIQUE,
+                [],
             )
             .expect("Could not create table persons");
         self.connection
-            .execute(
-                "CREATE INDEX IF NOT EXISTS nomIndex ON users(pseudo)",
-            [],
-            )
+            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON users(pseudo)", [])
             .expect("Could not create index on table persons");
     }
 }
@@ -83,18 +76,16 @@ async fn main() -> std::io::Result<()> {
     let app: AppState = AppState::new();
     app.create_database();
 
-    
     // TODO : Cors ELI5
     HttpServer::new(|| {
         let cors = Cors::default()
-        .allowed_origin("http://localhost:3000")
-        .allowed_methods(vec!["GET", "POST"])
-        .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-        .allowed_header(header::CONTENT_TYPE)
-        .max_age(3600);
-        // .service(web::resource("/something").route(web::post().to(create_something)))
+            .allowed_origin("http://localhost:3000")
+            .allowed_methods(vec!["GET", "POST", "PUT"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            .allowed_header(header::CONTENT_TYPE)
+            .max_age(3600);
 
-        App::new()
+            App::new()
             .wrap(cors)
             .data(AppState::new())
             .data(web::JsonConfig::default().error_handler(|err, _req| {
@@ -106,14 +97,27 @@ async fn main() -> std::io::Result<()> {
                 .into()
             }))
             .wrap(middleware::Logger::default())
-            .service(web::resource("/users")
-                .route(web::post().to(service_layer::user_service::create_user))
-                .route(web::get().to(service_layer::user_service::get_users))
+            .service(
+                web::resource("/users")
+                    .route(web::post().to(service_layer::user_service::create_user))
+                    .route(web::get().to(service_layer::user_service::get_users)),
             )
-            .service(web::resource("/users/{user_id}").route(web::get().to(service_layer::user_service::get_user)))
-            .service(web::resource("/photos").route(web::post().to(service_layer::photos_service::save_file)))
-            .service(web::resource("/auth").route(web::post().to(service_layer::auth_service::login)))
-            .service(web::resource("/auth/refresh").route(web::post().to(service_layer::auth_service::token_refresh)))
+            .service(
+                web::resource("/users/{user_id}")
+                    .route(web::get().to(service_layer::user_service::get_user))
+                    .route(web::put().to(service_layer::user_service::update_user)),
+            )
+            .service(
+                web::resource("/photos")
+                    .route(web::post().to(service_layer::photos_service::save_file)),
+            )
+            .service(
+                web::resource("/auth").route(web::post().to(service_layer::auth_service::login)),
+            )
+            .service(
+                web::resource("/auth/refresh")
+                    .route(web::post().to(service_layer::auth_service::token_refresh)),
+            )
             .default_service(
                 web::resource("")
                     // TODO : revoir ca

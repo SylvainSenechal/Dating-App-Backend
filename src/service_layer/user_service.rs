@@ -8,12 +8,30 @@ use crate::my_errors::sqlite_errors::SqliteError;
 use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::constants::constants::{M_COST, T_COST, P_COST, OUTPUT_LEN};
+use crate::service_layer::auth_service::AuthorizationUser;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateUserRequest {
     pub pseudo: String,
     pub password: String,
     #[serde(default)]
+    pub age: Option<u8>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+// pub struct UpdateReq {
+//     pub id: u32,
+//     #[serde(default)]
+//     pub pseudo: String,
+//     pub password: String,
+//     #[serde(default)]
+//     pub age: u8, // todo : voir pourquoi option..
+// }
+
+pub struct UpdateUserInfosReq {
+    pub id: u32,
+    pub pseudo: String,
+    pub password: String,
     pub age: Option<u8>,
 }
 
@@ -56,13 +74,6 @@ pub async fn create_user(
 
 pub async fn get_user(db: web::Data<AppState>, web::Path(userId): web::Path<u32>) -> actixResult<HttpResponse, ServiceError> {
     let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, userId);
-    // let u = User {
-    //     pseudo: "sylvain".to_string(),
-    //     id: 3,
-    //     password: "ee".to_string(),
-    //     age: Some(9)
-    // };
-    // Ok(HttpResponse::Ok().json(u))
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => Err(ServiceError::SqliteError(err))
@@ -73,6 +84,20 @@ pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, Ser
     let users_found = data_access_layer::user_dal::User::get_users(&db);
     match users_found {
         Ok(users) => Ok(HttpResponse::Ok().json(users)),
+        Err(err) => Err(ServiceError::SqliteError(err))
+    }    
+}
+
+pub async fn update_user(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+    web::Path(userId): web::Path<u32>,
+    mut update_user_request: web::Json<UpdateUserInfosReq>
+) -> actixResult<HttpResponse, ServiceError> {
+    // TODO verifier l id et l'id du jwt sont les memes
+    let update_status = data_access_layer::user_dal::User::update_user_infos(&db, update_user_request.into_inner());
+    match update_status {
+        Ok(()) => Ok(HttpResponse::Ok().body("sucess")),
         Err(err) => Err(ServiceError::SqliteError(err))
     }    
 }

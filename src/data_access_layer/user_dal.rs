@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::service_layer::user_service::{CreateUserRequest};
+use crate::service_layer::user_service::{CreateUserRequest, UpdateUserInfosReq};
 use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -33,7 +33,10 @@ impl User {
         Ok(())
     }
 
-    pub fn get_user_by_pseudo(db: &web::Data<AppState>, pseudo: String) -> Result<User, SqliteError> {
+    pub fn get_user_by_pseudo(
+        db: &web::Data<AppState>,
+        pseudo: String,
+    ) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
             .prepare_cached("SELECT * FROM users WHERE pseudo = ?")
@@ -75,6 +78,27 @@ impl User {
             .map_err(map_sqlite_error)?;
 
         Ok(user_found)
+    }
+
+    pub fn update_user_infos(
+        db: &web::Data<AppState>,
+        user: UpdateUserInfosReq,
+    ) -> Result<(), SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare_cached(
+                "UPDATE users
+                SET pseudo = ?,
+                age = ?
+                WHERE person_id = ?",
+            )
+            .map_err(map_sqlite_error)?;
+
+        statement
+            .execute(params![user.pseudo, user.age, user.id])
+            .map_err(map_sqlite_error)?;
+
+        Ok(())
     }
 
     pub fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
