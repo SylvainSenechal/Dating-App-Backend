@@ -5,7 +5,7 @@ use rand::thread_rng;
 
 use crate::{AppState, data_access_layer};
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::data_access_layer::user_dal::User;
+use crate::data_access_layer::user_dal::{User};
 use crate::my_errors::service_errors::ServiceError;
 use crate::constants::constants::{M_COST, T_COST, P_COST, OUTPUT_LEN};
 use crate::service_layer::auth_service::AuthorizationUser;
@@ -14,25 +14,25 @@ use crate::service_layer::auth_service::AuthorizationUser;
 pub struct CreateUserRequest {
     pub pseudo: String,
     pub password: String,
-    #[serde(default)]
-    pub age: Option<u8>,
+    pub email: String,
+    pub age: u8,
+    pub latitude: f32,
+    pub longitude: f32,
+    pub gender: String,
+    pub looking_for: String
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
-// pub struct UpdateReq {
-//     pub id: u32,
-//     #[serde(default)]
-//     pub pseudo: String,
-//     pub password: String,
-//     #[serde(default)]
-//     pub age: u8, // todo : voir pourquoi option..
-// }
-
+#[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateUserInfosReq {
     pub id: u32,
     pub pseudo: String,
     pub password: String,
-    pub age: Option<u8>,
+    pub email: String,
+    pub age: u8,
+    pub latitude: f32,
+    pub longitude: f32,
+    pub gender: String,
+    pub looking_for: String
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -44,7 +44,8 @@ pub async fn create_user(
     db: web::Data<AppState>,
     mut create_user_request: web::Json<CreateUserRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    let user = data_access_layer::user_dal::User::get_user_by_pseudo(&db, create_user_request.pseudo.to_string());
+    println!("{:?}", create_user_request);
+    let user = data_access_layer::user_dal::User::get_user_by_email(&db, create_user_request.email.to_string());
     let hasher: Argon2 = Argon2::new(
         Algorithm::Argon2id,
         Version::V0x13,

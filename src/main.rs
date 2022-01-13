@@ -45,12 +45,16 @@ impl AppState {
         self.connection
             .execute(
                 "CREATE TABLE IF NOT EXISTS users (
-                person_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                pseudo TEXT NOT NULL UNIQUE,
-                password TEXT NOT NULL,
-                age INTEGER
+                person_id       INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                pseudo          TEXT NOT NULL,
+                password        TEXT NOT NULL,
+                email           TEXT NOT NULL UNIQUE,
+                age             INTEGER NOT NULL,
+                latitude        REAL NOT NULL,
+                longitude       REAL NOT NULL,
+                gender          TEXT CHECK( gender IN ('male','female') ) NOT NULL,
+                looking_for     TEXT CHECK( gender IN ('male','female') ) NOT NULL
             )",
-                // email TEXT NOT NULL UNIQUE,
                 [],
             )
             .expect("Could not create table persons");
@@ -90,9 +94,11 @@ async fn main() -> std::io::Result<()> {
             .data(AppState::new())
             .data(web::JsonConfig::default().error_handler(|err, _req| {
                 let e = format!("{:?}", err);
+                println!("conflit");
+                println!("conflit {}", e);
                 actix_web::error::InternalError::from_response(
                     err,
-                    HttpResponse::Conflict().body(e),
+                    HttpResponse::Conflict().json(e),
                 )
                 .into()
             }))
