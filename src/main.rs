@@ -49,11 +49,12 @@ impl AppState {
                 pseudo          TEXT NOT NULL,
                 password        TEXT NOT NULL,
                 email           TEXT NOT NULL UNIQUE,
-                age             INTEGER NOT NULL,
+                age             INTEGER CHECK (age > 0 AND age < 128) NOT NULL,
                 latitude        REAL NOT NULL,
                 longitude       REAL NOT NULL,
-                gender          TEXT CHECK( gender IN ('male','female') ) NOT NULL,
-                looking_for     TEXT CHECK( gender IN ('male','female') ) NOT NULL
+                gender          TEXT CHECK (gender IN ('male','female')) NOT NULL,
+                looking_for     TEXT CHECK (looking_for IN ('male','female')) NOT NULL,
+                search_radius   INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10 --unit is kilometers
             )",
                 [],
             )

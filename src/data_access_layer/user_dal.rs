@@ -17,7 +17,8 @@ pub struct User {
     pub latitude: f32,
     pub longitude: f32,
     pub gender: String,
-    pub looking_for: String
+    pub looking_for: String,
+    pub search_radius: u16
 }
 
 impl User {
@@ -51,12 +52,13 @@ impl User {
                     id: row.get("person_id")?,
                     pseudo: row.get("pseudo")?,
                     email: row.get("email")?,
-                    password: row.get("password")?,
+                    password: row.get("password")?, // TODO : DO NOT SEND BACK THE PASSWORD
                     age: row.get("age")?,
                     latitude: row.get("latitude")?,
                     longitude: row.get("longitude")?,
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
+                    search_radius: row.get("search_radius")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -82,6 +84,7 @@ impl User {
                     longitude: row.get("longitude")?,
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
+                    search_radius: row.get("search_radius")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -104,13 +107,14 @@ impl User {
                 latitude = ?,
                 longitude = ?,
                 gender = ?,
-                looking_for = ?
+                looking_for = ?,
+                search_radius = ?
                 WHERE person_id = ?",
             )
             .map_err(map_sqlite_error)?;
 
         statement
-            .execute(params![user.pseudo, user.email, user.age, user.latitude, user.longitude, user.gender, user.looking_for, user.id])
+            .execute(params![user.pseudo, user.email, user.age, user.latitude, user.longitude, user.gender, user.looking_for, user.search_radius, user.id])
             .map_err(map_sqlite_error)?;
 
         Ok(())
@@ -133,6 +137,7 @@ impl User {
                     longitude: row.get("longitude")?,
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
+                    search_radius: row.get("search_radius")?,
                 })
             })
             .map_err(map_sqlite_error)?;

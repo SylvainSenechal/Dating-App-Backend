@@ -32,7 +32,8 @@ pub struct UpdateUserInfosReq {
     pub latitude: f32,
     pub longitude: f32,
     pub gender: String,
-    pub looking_for: String
+    pub looking_for: String,
+    pub search_radius: u16
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
