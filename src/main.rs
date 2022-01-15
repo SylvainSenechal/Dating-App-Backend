@@ -13,6 +13,7 @@ use constants::constants::DATABASE_NAME;
 // TODO : see and_then()
 // TODO : Check swag generation
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
+// TODO : recheck authorization + one user can only do what updates on himself
 
 pub struct AppState {
     connection: Connection,
@@ -45,8 +46,8 @@ impl AppState {
         self.connection
             .execute(
                 "CREATE TABLE IF NOT EXISTS users (
-                user_id           INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                name              TEXT NOT NULL,
+                user_id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                name                TEXT NOT NULL,
                 password            TEXT NOT NULL,
                 email               TEXT NOT NULL UNIQUE,
                 age                 INTEGER CHECK (age > 17 AND age < 128) NOT NULL,
@@ -56,7 +57,8 @@ impl AppState {
                 looking_for         TEXT CHECK (looking_for IN ('male','female')) NOT NULL,
                 search_radius       INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10, --unit is kilometers
                 looking_for_age_min INTEGER CHECK (looking_for_age_min > 17 AND looking_for_age_min < 128 AND looking_for_age_min <= looking_for_age_max) NOT NULL DEFAULT 18,
-                looking_for_age_max INTEGER CHECK (looking_for_age_max > 17 AND looking_for_age_max < 128) NOT NULL DEFAULT 127
+                looking_for_age_max INTEGER CHECK (looking_for_age_max > 17 AND looking_for_age_max < 128) NOT NULL DEFAULT 127,
+                description         TEXT DEFAULT ''
             )",
                 [],
             )
@@ -127,6 +129,10 @@ async fn main() -> std::io::Result<()> {
                 web::resource("/users/{user_id}")
                     .route(web::get().to(service_layer::user_service::get_user))
                     .route(web::put().to(service_layer::user_service::update_user)),
+            )
+            .service(
+                web::resource("/users/{user_id}/findlove")
+                .route(web::get().to(service_layer::user_service::find_love)),
             )
             .service(
                 web::resource("/photos")

@@ -21,6 +21,7 @@ pub struct User {
     pub search_radius: u16,
     pub looking_for_age_min: u8,
     pub looking_for_age_max: u8,
+    pub description: String,
 }
 
 impl User {
@@ -69,6 +70,7 @@ impl User {
                     search_radius: row.get("search_radius")?,
                     looking_for_age_min: row.get("looking_for_age_min")?,
                     looking_for_age_max: row.get("looking_for_age_max")?,
+                    description: row.get("description")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -97,6 +99,7 @@ impl User {
                     search_radius: row.get("search_radius")?,
                     looking_for_age_min: row.get("looking_for_age_min")?,
                     looking_for_age_max: row.get("looking_for_age_max")?,
+                    description: row.get("description")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -122,7 +125,8 @@ impl User {
                 looking_for = ?,
                 search_radius = ?,
                 looking_for_age_min = ?,
-                looking_for_age_max = ?
+                looking_for_age_max = ?,
+                description = ?
                 WHERE user_id = ?",
             )
             .map_err(map_sqlite_error)?;
@@ -139,6 +143,7 @@ impl User {
                 user.search_radius,
                 user.looking_for_age_min,
                 user.looking_for_age_max,
+                user.description,
                 user.id
             ])
             .map_err(map_sqlite_error)?;
@@ -166,6 +171,7 @@ impl User {
                     search_radius: row.get("search_radius")?,
                     looking_for_age_min: row.get("looking_for_age_min")?,
                     looking_for_age_max: row.get("looking_for_age_max")?,
+                    description: row.get("description")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -176,5 +182,52 @@ impl User {
         }
 
         Ok(persons)
+    }
+
+    pub fn find_love_target(
+        db: &web::Data<AppState>,
+        userId: u32,
+        looking_for: String,
+        gender: String,
+        search_radius: u16,
+        latitude: f32,
+        longitude: f32,
+        age_min: u8,
+        age_max: u8,
+    ) -> Result<User, SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare_cached(
+                "
+                SELECT *
+                FROM users
+                WHERE user_id <> ?
+                AND gender = ?
+                AND looking_for = ?
+               ",
+            )
+            .map_err(map_sqlite_error)?;
+
+        let user_found = statement
+            .query_row(params![userId, looking_for, gender], |row| {
+                Ok(User {
+                    id: row.get("user_id")?,
+                    name: row.get("name")?,
+                    password: row.get("password")?,
+                    email: row.get("email")?,
+                    age: row.get("age")?,
+                    latitude: row.get("latitude")?,
+                    longitude: row.get("longitude")?,
+                    gender: row.get("gender")?,
+                    looking_for: row.get("looking_for")?,
+                    search_radius: row.get("search_radius")?,
+                    looking_for_age_min: row.get("looking_for_age_min")?,
+                    looking_for_age_max: row.get("looking_for_age_max")?,
+                    description: row.get("description")?,
+                })
+            })
+            .map_err(map_sqlite_error)?;
+
+        Ok(user_found)
     }
 }
