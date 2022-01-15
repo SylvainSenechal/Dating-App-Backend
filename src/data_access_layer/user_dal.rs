@@ -10,7 +10,7 @@ use crate::AppState;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub id: u32,
-    pub pseudo: String,
+    pub name: String,
     pub password: String,
     pub email: String,
     pub age: u8,
@@ -18,7 +18,9 @@ pub struct User {
     pub longitude: f32,
     pub gender: String,
     pub looking_for: String,
-    pub search_radius: u16
+    pub search_radius: u16,
+    pub looking_for_age_min: u8,
+    pub looking_for_age_max: u8,
 }
 
 impl User {
@@ -28,19 +30,25 @@ impl User {
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
-            .prepare("INSERT INTO users (pseudo, password, email, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            .prepare("INSERT INTO users (name, password, email, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
-            .execute(params![user.pseudo, user.password, user.email, user.age, user.latitude, user.longitude, user.gender, user.looking_for])
+            .execute(params![
+                user.name,
+                user.password,
+                user.email,
+                user.age,
+                user.latitude,
+                user.longitude,
+                user.gender,
+                user.looking_for
+            ])
             .map_err(map_sqlite_error)?;
 
         Ok(())
     }
 
-    pub fn get_user_by_email(
-        db: &web::Data<AppState>,
-        email: String,
-    ) -> Result<User, SqliteError> {
+    pub fn get_user_by_email(db: &web::Data<AppState>, email: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
             .prepare_cached("SELECT * FROM users WHERE email = ?")
@@ -49,8 +57,8 @@ impl User {
         let user_found = statement
             .query_row(params![email], |row| {
                 Ok(User {
-                    id: row.get("person_id")?,
-                    pseudo: row.get("pseudo")?,
+                    id: row.get("user_id")?,
+                    name: row.get("name")?,
                     email: row.get("email")?,
                     password: row.get("password")?, // TODO : DO NOT SEND BACK THE PASSWORD
                     age: row.get("age")?,
@@ -59,6 +67,8 @@ impl User {
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
                     search_radius: row.get("search_radius")?,
+                    looking_for_age_min: row.get("looking_for_age_min")?,
+                    looking_for_age_max: row.get("looking_for_age_max")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -69,14 +79,14 @@ impl User {
     pub fn get_user_by_id(db: &web::Data<AppState>, userId: u32) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
-            .prepare_cached("SELECT * FROM users WHERE person_id = ?")
+            .prepare_cached("SELECT * FROM users WHERE user_id = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
             .query_row(params![userId], |row| {
                 Ok(User {
-                    id: row.get("person_id")?,
-                    pseudo: row.get("pseudo")?,
+                    id: row.get("user_id")?,
+                    name: row.get("name")?,
                     password: row.get("password")?,
                     email: row.get("email")?,
                     age: row.get("age")?,
@@ -85,6 +95,8 @@ impl User {
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
                     search_radius: row.get("search_radius")?,
+                    looking_for_age_min: row.get("looking_for_age_min")?,
+                    looking_for_age_max: row.get("looking_for_age_max")?,
                 })
             })
             .map_err(map_sqlite_error)?;
@@ -101,20 +113,34 @@ impl User {
             .connection
             .prepare_cached(
                 "UPDATE users
-                SET pseudo = ?,
+                SET name = ?,
                 email = ?,
                 age = ?,
                 latitude = ?,
                 longitude = ?,
                 gender = ?,
                 looking_for = ?,
-                search_radius = ?
-                WHERE person_id = ?",
+                search_radius = ?,
+                looking_for_age_min = ?,
+                looking_for_age_max = ?
+                WHERE user_id = ?",
             )
             .map_err(map_sqlite_error)?;
 
         statement
-            .execute(params![user.pseudo, user.email, user.age, user.latitude, user.longitude, user.gender, user.looking_for, user.search_radius, user.id])
+            .execute(params![
+                user.name,
+                user.email,
+                user.age,
+                user.latitude,
+                user.longitude,
+                user.gender,
+                user.looking_for,
+                user.search_radius,
+                user.looking_for_age_min,
+                user.looking_for_age_max,
+                user.id
+            ])
             .map_err(map_sqlite_error)?;
 
         Ok(())
@@ -128,8 +154,8 @@ impl User {
         let result_rows = statement
             .query_map([], |row| {
                 Ok(User {
-                    id: row.get("person_id")?,
-                    pseudo: row.get("pseudo")?,
+                    id: row.get("user_id")?,
+                    name: row.get("name")?,
                     password: row.get("password")?,
                     email: row.get("email")?,
                     age: row.get("age")?,
@@ -138,6 +164,8 @@ impl User {
                     gender: row.get("gender")?,
                     looking_for: row.get("looking_for")?,
                     search_radius: row.get("search_radius")?,
+                    looking_for_age_min: row.get("looking_for_age_min")?,
+                    looking_for_age_max: row.get("looking_for_age_max")?,
                 })
             })
             .map_err(map_sqlite_error)?;

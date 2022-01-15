@@ -10,7 +10,7 @@ use tokio::task;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct UserLoginRequest {
-    pseudo: String,
+    name: String,
     password: String,
 }
 
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     console_subscriber::init();
     let client = reqwest::Client::new();
     let person = UserLoginRequest {
-        pseudo: "aa".to_string(),
+        name: "aa".to_string(),
         password: "aa".to_string(),
     };
     let now = SystemTime::now();

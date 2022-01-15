@@ -45,23 +45,37 @@ impl AppState {
         self.connection
             .execute(
                 "CREATE TABLE IF NOT EXISTS users (
-                person_id       INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                pseudo          TEXT NOT NULL,
-                password        TEXT NOT NULL,
-                email           TEXT NOT NULL UNIQUE,
-                age             INTEGER CHECK (age > 0 AND age < 128) NOT NULL,
-                latitude        REAL NOT NULL,
-                longitude       REAL NOT NULL,
-                gender          TEXT CHECK (gender IN ('male','female')) NOT NULL,
-                looking_for     TEXT CHECK (looking_for IN ('male','female')) NOT NULL,
-                search_radius   INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10 --unit is kilometers
+                user_id           INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                name              TEXT NOT NULL,
+                password            TEXT NOT NULL,
+                email               TEXT NOT NULL UNIQUE,
+                age                 INTEGER CHECK (age > 17 AND age < 128) NOT NULL,
+                latitude            REAL NOT NULL,
+                longitude           REAL NOT NULL,
+                gender              TEXT CHECK (gender IN ('male','female')) NOT NULL,
+                looking_for         TEXT CHECK (looking_for IN ('male','female')) NOT NULL,
+                search_radius       INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10, --unit is kilometers
+                looking_for_age_min INTEGER CHECK (looking_for_age_min > 17 AND looking_for_age_min < 128 AND looking_for_age_min <= looking_for_age_max) NOT NULL DEFAULT 18,
+                looking_for_age_max INTEGER CHECK (looking_for_age_max > 17 AND looking_for_age_max < 128) NOT NULL DEFAULT 127
             )",
                 [],
             )
             .expect("Could not create table persons");
         self.connection
-            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON users(pseudo)", [])
+            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON users(name)", [])
             .expect("Could not create index on table persons");
+
+        self.connection
+            .execute(
+                "CREATE TABLE IF NOT EXISTS photos (
+                photo_id    INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                url         TEXT NOT NULL,
+                FOREIGN KEY(user_id) REFERENCES user(user_id)
+            )",
+                [],
+            )
+            .expect("Could not create table photos");
     }
 }
 
@@ -90,7 +104,7 @@ async fn main() -> std::io::Result<()> {
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
 
-            App::new()
+        App::new()
             .wrap(cors)
             .data(AppState::new())
             .data(web::JsonConfig::default().error_handler(|err, _req| {

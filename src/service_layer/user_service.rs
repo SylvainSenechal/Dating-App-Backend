@@ -12,7 +12,7 @@ use crate::service_layer::auth_service::AuthorizationUser;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateUserRequest {
-    pub pseudo: String,
+    pub name: String,
     pub password: String,
     pub email: String,
     pub age: u8,
@@ -25,7 +25,7 @@ pub struct CreateUserRequest {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateUserInfosReq {
     pub id: u32,
-    pub pseudo: String,
+    pub name: String,
     pub password: String,
     pub email: String,
     pub age: u8,
@@ -33,7 +33,9 @@ pub struct UpdateUserInfosReq {
     pub longitude: f32,
     pub gender: String,
     pub looking_for: String,
-    pub search_radius: u16
+    pub search_radius: u16,
+    pub looking_for_age_min: u8,
+    pub looking_for_age_max: u8
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
