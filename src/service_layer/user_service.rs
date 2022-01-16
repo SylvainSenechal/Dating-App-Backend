@@ -22,6 +22,23 @@ pub struct CreateUserRequest {
     pub looking_for: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct CreateUserResponse {
+    message: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct SwipeUserRequest {
+    pub swiper: u32,
+    pub swiped: u32,
+    pub love: u8, // boolean for sqlite, 0 = dont love, 1 - love
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct SwipeUserResponse {
+    message: String,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateUserInfosReq {
     pub id: u32,
@@ -37,11 +54,6 @@ pub struct UpdateUserInfosReq {
     pub looking_for_age_min: u8,
     pub looking_for_age_max: u8,
     pub description: String, // todo : check max length == 500
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateUserResponse {
-    message: String,
 }
 
 pub async fn create_user(
@@ -147,6 +159,30 @@ pub async fn find_love(
 
     match potential_lover {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
+        Err(err) => Err(ServiceError::SqliteError(err)),
+    }
+}
+
+pub async fn swipe_user(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+    web::Path((swiper_id, _)): web::Path<(u32, u32)>,
+    swipe_user_request: web::Json<SwipeUserRequest>,
+) -> actixResult<HttpResponse, ServiceError> {
+    if authorized.id != swiper_id {
+        return Err(ServiceError::UnknownServiceError);
+    }
+    println!("{:?}", swipe_user_request);
+
+    match data_access_layer::user_dal::User::swipe_user(
+        &db,
+        swipe_user_request.swiper,
+        swipe_user_request.swiped,
+        swipe_user_request.love,
+    ) {
+        Ok(()) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
+            message: "User swiped correctly".to_string(),
+        })),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }

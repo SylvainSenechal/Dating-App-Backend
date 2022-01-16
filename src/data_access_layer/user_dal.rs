@@ -31,7 +31,7 @@ impl User {
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
-            .prepare("INSERT INTO users (name, password, email, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            .prepare("INSERT INTO Users (name, password, email, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
             .execute(params![
@@ -52,7 +52,7 @@ impl User {
     pub fn get_user_by_email(db: &web::Data<AppState>, email: String) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
-            .prepare_cached("SELECT * FROM users WHERE email = ?")
+            .prepare_cached("SELECT * FROM Users WHERE email = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
@@ -81,7 +81,7 @@ impl User {
     pub fn get_user_by_id(db: &web::Data<AppState>, userId: u32) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
-            .prepare_cached("SELECT * FROM users WHERE user_id = ?")
+            .prepare_cached("SELECT * FROM Users WHERE user_id = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
@@ -115,7 +115,7 @@ impl User {
         let mut statement = db
             .connection
             .prepare_cached(
-                "UPDATE users
+                "UPDATE Users
                 SET name = ?,
                 email = ?,
                 age = ?,
@@ -154,7 +154,7 @@ impl User {
     pub fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
         let mut statement = db
             .connection
-            .prepare("SELECT * FROM users")
+            .prepare("SELECT * FROM Users")
             .map_err(map_sqlite_error)?;
         let result_rows = statement
             .query_map([], |row| {
@@ -200,7 +200,7 @@ impl User {
             .prepare_cached(
                 "
                 SELECT *
-                FROM users
+                FROM Users
                 WHERE user_id <> ?
                 AND gender = ?
                 AND looking_for = ?
@@ -229,5 +229,26 @@ impl User {
             .map_err(map_sqlite_error)?;
 
         Ok(user_found)
+    }
+
+    pub fn swipe_user(
+        db: &web::Data<AppState>,
+        swiper: u32,
+        swiped: u32,
+        love: u8 // 0 : swiper dont like swiped, 1 : swiper like swiped
+    ) -> Result<(), SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare("INSERT INTO MatchingResults (swiper, swiped, love) VALUES (?, ?, ?)")
+            .map_err(map_sqlite_error)?;
+        statement
+            .execute(params![
+                swiper,
+                swiped,
+                love,
+            ])
+            .map_err(map_sqlite_error)?;
+
+        Ok(())
     }
 }

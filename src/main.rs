@@ -45,7 +45,7 @@ impl AppState {
         println!("Creating user database");
         self.connection
             .execute(
-                "CREATE TABLE IF NOT EXISTS users (
+                "CREATE TABLE IF NOT EXISTS Users (
                 user_id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 name                TEXT NOT NULL,
                 password            TEXT NOT NULL,
@@ -62,22 +62,37 @@ impl AppState {
             )",
                 [],
             )
-            .expect("Could not create table persons");
+            .expect("Could not create table Users");
         self.connection
-            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON users(name)", [])
+            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON Users(name)", [])
             .expect("Could not create index on table persons");
 
         self.connection
             .execute(
-                "CREATE TABLE IF NOT EXISTS photos (
+                "CREATE TABLE IF NOT EXISTS Photos (
                 photo_id    INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 user_id     INTEGER NOT NULL,
                 url         TEXT NOT NULL,
-                FOREIGN KEY(user_id) REFERENCES user(user_id)
+                FOREIGN KEY(user_id) REFERENCES Users(user_id)
             )",
                 [],
             )
             .expect("Could not create table photos");
+
+        self.connection
+            .execute(
+                "CREATE TABLE IF NOT EXISTS MatchingResults (
+                match_id            INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                swiper              INTEGER NOT NULL,
+                swiped              INTEGER NOT NULL,
+                love                INTEGER CHECK (love IN (0, 1)) NOT NULL,
+                FOREIGN KEY(swiper) REFERENCES Users(user_id),
+                FOREIGN KEY(swiped) REFERENCES Users(user_id),
+                UNIQUE (swiper, swiped)
+            )",
+                [],
+            )
+            .expect("Could not create table MatchingResults");
     }
 }
 
@@ -131,8 +146,12 @@ async fn main() -> std::io::Result<()> {
                     .route(web::put().to(service_layer::user_service::update_user)),
             )
             .service(
-                web::resource("/users/{user_id}/findlove")
-                .route(web::get().to(service_layer::user_service::find_love)),
+                web::resource("/users/{user_id}/findlover")
+                    .route(web::get().to(service_layer::user_service::find_love)),
+            )
+            .service(
+                web::resource("/users/{swiper_id}/loves/{swiped_id}")
+                    .route(web::post().to(service_layer::user_service::swipe_user)),
             )
             .service(
                 web::resource("/photos")
