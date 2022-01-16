@@ -166,7 +166,7 @@ pub async fn find_love(
 pub async fn swipe_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path((swiper_id, _)): web::Path<(u32, u32)>,
+    web::Path((swiper_id, swiped_id)): web::Path<(u32, u32)>,
     swipe_user_request: web::Json<SwipeUserRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
     if authorized.id != swiper_id {
@@ -180,9 +180,19 @@ pub async fn swipe_user(
         swipe_user_request.swiped,
         swipe_user_request.love,
     ) {
-        Ok(()) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
-            message: "User swiped correctly".to_string(),
-        })),
+        Ok(()) => {
+            let love_is_found =
+                data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id);
+            match love_is_found {
+                Ok(2) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
+                    message: "You matched !".to_string(),
+                })),
+                Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
+                    message: "You love that person !".to_string(),
+                })),
+                Err(err) => Err(ServiceError::SqliteError(err)),
+            }
+        }
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }

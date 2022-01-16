@@ -251,4 +251,28 @@ impl User {
 
         Ok(())
     }
+
+    pub fn check_mutual_love(
+        db: &web::Data<AppState>,
+        lover1: u32,
+        lover2: u32,
+    ) -> Result<usize, SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare(
+                "
+            SELECT * 
+            FROM MatchingResults
+            WHERE (swiper = ? AND swiped = ?) 
+            OR (swiper = ? AND swiped = ?)
+            AND love = 1
+            ",
+            )
+            .map_err(map_sqlite_error)?;
+        let rows_found = statement
+            .query_map(params![lover1, lover2, lover2, lover1], |row| Ok(()))
+            .map_err(map_sqlite_error)?;
+
+        Ok(rows_found.count())
+    }
 }
