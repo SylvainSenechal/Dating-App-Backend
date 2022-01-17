@@ -174,6 +174,7 @@ pub async fn swipe_user(
     }
     println!("{:?}", swipe_user_request);
 
+    // TODO : this might need to be placed in a transaction 
     match data_access_layer::user_dal::User::swipe_user(
         &db,
         swipe_user_request.swiper,
@@ -181,12 +182,17 @@ pub async fn swipe_user(
         swipe_user_request.love,
     ) {
         Ok(()) => {
-            let love_is_found =
-                data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id);
-            match love_is_found {
-                Ok(2) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
-                    message: "You matched !".to_string(),
-                })),
+            match data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id) {
+                Ok(2) => {
+                    match data_access_layer::user_dal::User::create_lovers(
+                        &db, swiper_id, swiped_id,
+                    ) {
+                        Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
+                            message: "You matched !".to_string(),
+                        })),
+                        Err(err) => Err(ServiceError::SqliteError(err)),
+                    }
+                },
                 Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
                     message: "You love that person !".to_string(),
                 })),

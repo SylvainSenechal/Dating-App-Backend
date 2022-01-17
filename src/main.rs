@@ -93,6 +93,20 @@ impl AppState {
                 [],
             )
             .expect("Could not create table MatchingResults");
+
+        self.connection
+            .execute(
+                "CREATE TABLE IF NOT EXISTS Lovers (
+                love_id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                lover1              INTEGER NOT NULL,
+                lover2              INTEGER NOT NULL,
+                FOREIGN KEY(lover1) REFERENCES Users(user_id),
+                FOREIGN KEY(lover2) REFERENCES Users(user_id),
+                UNIQUE (lover1, lover2)
+            )",
+                [],
+            )
+            .expect("Could not create table Lovers");
     }
 }
 

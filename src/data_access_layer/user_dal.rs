@@ -235,18 +235,14 @@ impl User {
         db: &web::Data<AppState>,
         swiper: u32,
         swiped: u32,
-        love: u8 // 0 : swiper dont like swiped, 1 : swiper like swiped
+        love: u8, // 0 : swiper dont like swiped, 1 : swiper like swiped
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
             .prepare("INSERT INTO MatchingResults (swiper, swiped, love) VALUES (?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
-            .execute(params![
-                swiper,
-                swiped,
-                love,
-            ])
+            .execute(params![swiper, swiped, love,])
             .map_err(map_sqlite_error)?;
 
         Ok(())
@@ -274,5 +270,21 @@ impl User {
             .map_err(map_sqlite_error)?;
 
         Ok(rows_found.count())
+    }
+
+    pub fn create_lovers(
+        db: &web::Data<AppState>,
+        lover1: u32,
+        lover2: u32,
+    ) -> Result<(), SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare("INSERT INTO Lovers (lover1, lover2) VALUES (?, ?)")
+            .map_err(map_sqlite_error)?;
+        statement
+            .execute(params![lover1, lover2])
+            .map_err(map_sqlite_error)?;
+
+        Ok(())
     }
 }
