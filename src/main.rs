@@ -172,6 +172,10 @@ async fn main() -> std::io::Result<()> {
                     .route(web::post().to(service_layer::photos_service::save_file)),
             )
             .service(
+                web::resource("/lovers/{user_id}")
+                    .route(web::get().to(service_layer::lover_service::get_lovers)),
+            )
+            .service(
                 web::resource("/auth").route(web::post().to(service_layer::auth_service::login)),
             )
             .service(

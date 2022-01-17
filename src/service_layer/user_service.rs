@@ -4,7 +4,6 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 
 use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
-use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::auth_service::AuthorizationUser;
@@ -99,9 +98,12 @@ pub async fn create_user(
 pub async fn get_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(userId): web::Path<u32>,
+    web::Path(user_id): web::Path<u32>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, userId);
+    if authorized.id != user_id {
+        return Err(ServiceError::UnknownServiceError); // TODO : create a specific error for this case
+    }
+    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, user_id);
     match user_found {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => Err(ServiceError::SqliteError(err)),
@@ -119,10 +121,12 @@ pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, Ser
 pub async fn update_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(userId): web::Path<u32>,
+    web::Path(user_id): web::Path<u32>,
     update_user_request: web::Json<UpdateUserInfosReq>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    // TODO verifier l id et l'id du jwt sont les memes
+    if authorized.id != user_id {
+        return Err(ServiceError::UnknownServiceError);
+    }
     let update_status =
         data_access_layer::user_dal::User::update_user_infos(&db, update_user_request.into_inner());
     match update_status {
@@ -134,9 +138,9 @@ pub async fn update_user(
 pub async fn find_love(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(userId): web::Path<u32>,
+    web::Path(user_id): web::Path<u32>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != userId {
+    if authorized.id != user_id {
         return Err(ServiceError::UnknownServiceError);
     }
     let user = data_access_layer::user_dal::User::get_user_by_id(&db, authorized.id);
@@ -147,7 +151,7 @@ pub async fn find_love(
 
     let potential_lover = data_access_layer::user_dal::User::find_love_target(
         &db,
-        userId,
+        user_id,
         user.looking_for,
         user.gender,
         user.search_radius,
@@ -184,7 +188,7 @@ pub async fn swipe_user(
         Ok(()) => {
             match data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id) {
                 Ok(2) => {
-                    match data_access_layer::user_dal::User::create_lovers(
+                    match data_access_layer::lover_dal::create_lovers(
                         &db, swiper_id, swiped_id,
                     ) {
                         Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {

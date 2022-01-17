@@ -78,14 +78,14 @@ impl User {
         Ok(user_found)
     }
 
-    pub fn get_user_by_id(db: &web::Data<AppState>, userId: u32) -> Result<User, SqliteError> {
+    pub fn get_user_by_id(db: &web::Data<AppState>, user_id: u32) -> Result<User, SqliteError> {
         let mut statement = db
             .connection
             .prepare_cached("SELECT * FROM Users WHERE user_id = ?")
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
-            .query_row(params![userId], |row| {
+            .query_row(params![user_id], |row| {
                 Ok(User {
                     id: row.get("user_id")?,
                     name: row.get("name")?,
@@ -186,7 +186,7 @@ impl User {
 
     pub fn find_love_target(
         db: &web::Data<AppState>,
-        userId: u32,
+        user_id: u32,
         looking_for: String,
         gender: String,
         search_radius: u16,
@@ -204,12 +204,17 @@ impl User {
                 WHERE user_id <> ?
                 AND gender = ?
                 AND looking_for = ?
+                AND user_id NOT IN (
+                    SELECT swiped as user_id
+                    FROM MatchingResults
+                    WHERE swiper = ?
+                )
                ",
             )
             .map_err(map_sqlite_error)?;
 
         let user_found = statement
-            .query_row(params![userId, looking_for, gender], |row| {
+            .query_row(params![user_id, looking_for, gender, user_id], |row| {
                 Ok(User {
                     id: row.get("user_id")?,
                     name: row.get("name")?,
@@ -259,9 +264,8 @@ impl User {
                 "
             SELECT * 
             FROM MatchingResults
-            WHERE (swiper = ? AND swiped = ?) 
-            OR (swiper = ? AND swiped = ?)
-            AND love = 1
+            WHERE (swiper = ? AND swiped = ? AND love = 1) 
+            OR (swiper = ? AND swiped = ? AND love = 1)
             ",
             )
             .map_err(map_sqlite_error)?;
@@ -270,21 +274,5 @@ impl User {
             .map_err(map_sqlite_error)?;
 
         Ok(rows_found.count())
-    }
-
-    pub fn create_lovers(
-        db: &web::Data<AppState>,
-        lover1: u32,
-        lover2: u32,
-    ) -> Result<(), SqliteError> {
-        let mut statement = db
-            .connection
-            .prepare("INSERT INTO Lovers (lover1, lover2) VALUES (?, ?)")
-            .map_err(map_sqlite_error)?;
-        statement
-            .execute(params![lover1, lover2])
-            .map_err(map_sqlite_error)?;
-
-        Ok(())
     }
 }
