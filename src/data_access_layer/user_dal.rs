@@ -275,4 +275,48 @@ impl User {
 
         Ok(rows_found.count())
     }
+
+    pub fn swiped_count(
+        db: &web::Data<AppState>,
+        user_id: u32,
+        loved: u8
+    ) -> Result<usize, SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare(
+                "
+            SELECT * 
+            FROM MatchingResults
+            WHERE swiped = ? AND love = ?
+            ",
+            )
+            .map_err(map_sqlite_error)?;
+        let rows_found = statement
+            .query_map(params![user_id, loved], |row| Ok(()))
+            .map_err(map_sqlite_error)?;
+
+        Ok(rows_found.count())
+    }
+
+    pub fn swiping_count(
+        db: &web::Data<AppState>,
+        user_id: u32,
+        loved: u8
+    ) -> Result<usize, SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare(
+                "
+            SELECT * 
+            FROM MatchingResults
+            WHERE swiper = ? AND love = ?
+            ",
+            )
+            .map_err(map_sqlite_error)?;
+        let rows_found = statement
+            .query_map(params![user_id, loved], |row| Ok(()))
+            .map_err(map_sqlite_error)?;
+
+        Ok(rows_found.count())
+    }
 }

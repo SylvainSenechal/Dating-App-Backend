@@ -32,6 +32,7 @@ impl AppState {
                                                                            // let _ = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
                                                                            // let res4 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
 
+        // TODO : check if needed to add pragna enable foreign keys
         println!("1 {:?}", res1);
         println!("2 {:?}", res2);
         println!("3 {:?}", res3);
@@ -42,6 +43,7 @@ impl AppState {
     }
 
     fn create_database(&self) {
+        
         println!("Creating user database");
         self.connection
             .execute(
@@ -166,6 +168,22 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/users/{swiper_id}/loves/{swiped_id}")
                     .route(web::post().to(service_layer::user_service::swipe_user)),
+            )
+            .service(
+                web::resource("/users/{user_id}/statistics/loved")
+                    .route(web::get().to(service_layer::statistics_service::loved_count)),
+            )
+            .service(
+                web::resource("/users/{user_id}/statistics/rejected")
+                    .route(web::get().to(service_layer::statistics_service::rejected_count)),
+            )
+            .service(
+                web::resource("/users/{user_id}/statistics/loving")
+                    .route(web::get().to(service_layer::statistics_service::loving_count)),
+            )
+            .service(
+                web::resource("/users/{user_id}/statistics/rejecting")
+                    .route(web::get().to(service_layer::statistics_service::rejecting_count)),
             )
             .service(
                 web::resource("/photos")
