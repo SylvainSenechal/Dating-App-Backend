@@ -43,7 +43,6 @@ impl AppState {
     }
 
     fn create_database(&self) {
-        
         println!("Creating user database");
         self.connection
             .execute(
@@ -109,6 +108,21 @@ impl AppState {
                 [],
             )
             .expect("Could not create table Lovers");
+
+        self.connection
+            .execute(
+                "CREATE TABLE IF NOT EXISTS Messages (
+                message_id  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                message     TEXT,
+                poster_id   INTEGER NOT NULL,
+                love_id     INTEGER NOT NULL,
+                date        TEXT,
+                FOREIGN KEY(poster_id) REFERENCES Users(user_id),
+                FOREIGN KEY(love_id)   REFERENCES Lovers(love_id)
+            )",
+                [],
+            )
+            .expect("Could not create table Messages");
     }
 }
 
@@ -184,6 +198,14 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/users/{user_id}/statistics/rejecting")
                     .route(web::get().to(service_layer::statistics_service::rejecting_count)),
+            )
+            .service(
+                web::resource("/messages")
+                    .route(web::post().to(service_layer::message_service::create_message)),
+            )
+            .service(
+                web::resource("/messages/{love_id}")
+                    .route(web::get().to(service_layer::message_service::get_messages))
             )
             .service(
                 web::resource("/photos")
