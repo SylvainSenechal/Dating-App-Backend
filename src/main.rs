@@ -1,7 +1,10 @@
+use actix::{Actor, StreamHandler};
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web_actors::ws;
 use rusqlite::Connection;
+use std::collections::{HashMap};
 
 // mod auth;
 mod constants;
@@ -14,6 +17,7 @@ use constants::constants::DATABASE_NAME;
 // TODO : Check swag generation
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 // TODO : recheck authorization + one user can only do what updates on himself
+// TODO : replace id u32 by usize ?
 
 pub struct AppState {
     connection: Connection,
@@ -142,8 +146,15 @@ async fn main() -> std::io::Result<()> {
     let app: AppState = AppState::new();
     app.create_database();
 
+    let server = service_layer::websocket_service::Server {
+        sessions: HashMap::new(),
+        love_chat_rooms: HashMap::new(),
+    }
+    .start();
+
     // TODO : Cors ELI5
-    HttpServer::new(|| {
+    // TODO : logger middleware
+    HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin("http://localhost:3000")
             .allowed_methods(vec!["GET", "POST", "PUT"])
@@ -154,6 +165,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .data(AppState::new())
+            .data(server.clone())
             .data(web::JsonConfig::default().error_handler(|err, _req| {
                 let e = format!("{:?}", err);
                 println!("conflit");
@@ -165,6 +177,10 @@ async fn main() -> std::io::Result<()> {
                 .into()
             }))
             .wrap(middleware::Logger::default())
+            .route(
+                "/ws/",
+                web::get().to(service_layer::websocket_service::index_websocket),
+            )
             .service(
                 web::resource("/users")
                     .route(web::post().to(service_layer::user_service::create_user))
@@ -205,7 +221,11 @@ async fn main() -> std::io::Result<()> {
             )
             .service(
                 web::resource("/messages/{love_id}")
-                    .route(web::get().to(service_layer::message_service::get_messages))
+                    .route(web::get().to(service_layer::message_service::get_love_messages)),
+            )
+            .service(
+                web::resource("/messages/users/{user_id}")
+                    .route(web::get().to(service_layer::message_service::get_lover_messages)),
             )
             .service(
                 web::resource("/photos")

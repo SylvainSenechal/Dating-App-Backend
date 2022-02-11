@@ -63,7 +63,6 @@ pub async fn login(
                         exp: SystemTime::now().duration_since(UNIX_EPOCH).expect("failed getting current timestamp").as_secs() as usize + TOKEN_REFRESH_LIFESPAN
                     };
                     let token = encode(&Header::default(), &my_claims, &EncodingKey::from_secret(KEY_JWT)).expect("failed token creation");               
-                    print!("oui");
                     let refresh_token = encode(&Header::default(), &my_refresh_claims, &EncodingKey::from_secret(KEY_JWT_REFRESH)).expect("failed token creation");               
                     
                     Ok(HttpResponse::Ok().json(LoginResponse{token: token, refresh_token: refresh_token, message: "Successfull login".to_string()}))
@@ -129,7 +128,7 @@ impl FromRequest for AuthorizationUser {
 
                 match token_data {
                     Ok(data) => {
-                        println!("ok auth"); // todo : add loggin
+                        println!("ok auth"); // todo : add logging
                         return ok(AuthorizationUser{id: data.claims.sub})
                     }
                     Err(e) => {
@@ -139,6 +138,21 @@ impl FromRequest for AuthorizationUser {
                 }
             }
             None => err(ErrorUnauthorized("blocked!")),
+        }
+    }
+}
+
+pub fn validate_token(token: &str) -> Option<AuthorizationUser> {
+    let validation = Validation { ..Validation::default() };
+    let token_data = decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT), &validation);
+    match token_data {
+        Ok(data) => {
+            println!("ok validate_token");
+            return Some(AuthorizationUser{id: data.claims.sub})
+        }
+        Err(e) => {
+            println!("validate_token not ok : {}", e);
+            return None
         }
     }
 }
