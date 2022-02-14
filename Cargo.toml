@@ -19,6 +19,7 @@ rand = "0.8"
 actix-cors = "0.5.4"
 actix-web-actors = "3"
 actix = "0.10"
+chrono = "0.4"
 
 # The core APIs, including the Serialize and Deserialize traits. Always
 # required when using Serde. The "derive" feature is only required when

@@ -1,5 +1,3 @@
-// TODO : voir const vs static 
-
 // https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html
 // ==> "Use Argon2id with a minimum configuration of 15 MiB of memory, an iteration count of 2, and 1 degree of parallelism."
 pub const M_COST: u32 = 15_000;// m_cost is the memory size, expressed in kilobytes

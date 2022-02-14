@@ -2,15 +2,15 @@ use actix_web::web;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
-use crate::data_access_layer::user_dal::User;
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Lover { // same as user but with a love_id
-    pub love_id: u32,
-    pub id: u32,
+pub struct Lover {
+    // same as user but with a love_id
+    pub love_id: usize,
+    pub id: usize,
     pub name: String,
     pub password: String,
     pub email: String,
@@ -25,14 +25,21 @@ pub struct Lover { // same as user but with a love_id
     pub description: String,
 }
 
+#[allow(dead_code)]
+pub struct LoveRelation {
+    pub love_id: usize,
+    pub lover1: usize,
+    pub lover2: usize,
+}
+
 pub fn create_lovers(
     db: &web::Data<AppState>,
-    lover1: u32,
-    lover2: u32,
+    lover1: usize,
+    lover2: usize,
 ) -> Result<(), SqliteError> {
     let mut statement = db
         .connection
-        .prepare("INSERT INTO Lovers (lover1, lover2) VALUES (?, ?)")
+        .prepare_cached("INSERT INTO Lovers (lover1, lover2) VALUES (?, ?)")
         .map_err(map_sqlite_error)?;
     statement
         .execute(params![lover1, lover2])
@@ -41,11 +48,56 @@ pub fn create_lovers(
     Ok(())
 }
 
-pub fn get_lovers(db: &web::Data<AppState>, user_id: u32) -> Result<Vec<Lover>, SqliteError> {
-    // TODO : do this in a transaction or use a Union..
+#[allow(dead_code)]
+// Get all the lovers of the user_id (user_id is exluded from result), a lover is a user, with an added love_id field
+pub fn get_love_relation(
+    db: &web::Data<AppState>,
+    love_id: usize,
+) -> Result<LoveRelation, SqliteError> {
     let mut statement = db
         .connection
-        .prepare(
+        .prepare_cached(
+            "
+            SELECT * FROM Lovers WHERE love_id = ?
+            ",
+        )
+        .map_err(map_sqlite_error)?;
+    statement
+        .query_row(params![love_id], |row| {
+            Ok(LoveRelation {
+                love_id: row.get("love_id")?,
+                lover1: row.get("lover1")?,
+                lover2: row.get("lovee2")?,
+            })
+        })
+        .map_err(map_sqlite_error)
+}
+
+// Return true if user_id is in the loved_id relation
+pub fn user_in_love_relation(
+    db: &web::Data<AppState>,
+    user_id: usize,
+    love_id: usize,
+) -> Result<(), SqliteError> {
+    let mut statement = db
+        .connection
+        .prepare_cached(
+            "
+        SELECT * FROM Lovers WHERE love_id = ? AND (lover1 = ? OR lover2 = ?)
+        ",
+        )
+        .map_err(map_sqlite_error)?;
+
+    statement
+        .query_row(params![love_id, user_id, user_id], |_| Ok(()))
+        .map_err(map_sqlite_error)
+}
+
+// Get all the lovers of the user_id (user_id is exluded from result), a lover is a user, with an added love_id field
+pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>, SqliteError> {
+    let mut statement = db
+        .connection
+        .prepare_cached(
             "
             SELECT * FROM Users JOIN Lovers ON Users.user_id = Lovers.lover1 WHERE Lovers.lover2 = ?
             ",
@@ -74,7 +126,7 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: u32) -> Result<Vec<Lover>, 
 
     let mut statement = db
         .connection
-        .prepare(
+        .prepare_cached(
             "
             SELECT * FROM Users JOIN Lovers ON Users.user_id = Lovers.lover2 WHERE Lovers.lover1 = ?
             ",

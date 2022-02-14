@@ -1,9 +1,10 @@
 use std::fmt;
+use std::ops::Add;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use serde::Serialize;
 
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::my_errors::ErrorResponse;
 
 #[derive(Debug)]
 
@@ -13,9 +14,11 @@ pub enum ServiceError {
     SqliteError(SqliteError),
     LoginError,
     JwtError,
+    ForbiddenQuery,
+    ValueNotAccepted(String, String), // (Value, Reason)
+    TransactionError,
     UnknownServiceError
 }
-// todo : use static str for error messayes ?
 impl ServiceError {
     pub fn error_message(&self) -> String {
         match self {
@@ -24,6 +27,9 @@ impl ServiceError {
             Self::SqliteError(_) => "Sqlite internal error".to_string(),
             Self::LoginError => "Login error".to_string(),
             Self::JwtError => "Jwt internal error".to_string(),
+            Self::ForbiddenQuery => "Query forbidden error".to_string(),
+            Self::ValueNotAccepted(value, reason) => "SQL provided value not accepted, value = ".to_string().add(value).add(" reason : ").add(reason),
+            Self::TransactionError => "Transaction error".to_string(),
             Self::UnknownServiceError => "Unknown service layer error".to_string(),
         }
     }
@@ -34,14 +40,6 @@ impl fmt::Display for ServiceError {
     }
 }
 
-#[derive(Serialize)]
-
-struct ErrorResponse { // todo : this is declared twice in service and sqlite errors
-    code: u16,
-    message: String,
-    detailed_error: String,
-}
-
 impl actix_web::ResponseError for ServiceError {
     fn status_code(&self) -> StatusCode {
         match *self {
@@ -50,6 +48,9 @@ impl actix_web::ResponseError for ServiceError {
             Self::SqliteError(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::LoginError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::JwtError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::ForbiddenQuery => StatusCode::FORBIDDEN,
+            Self::ValueNotAccepted(_, _) => StatusCode::FORBIDDEN,
+            Self::TransactionError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UnknownServiceError => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }

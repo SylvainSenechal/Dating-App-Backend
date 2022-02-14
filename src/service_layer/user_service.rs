@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::my_errors::service_errors::ServiceError;
-use crate::my_errors::sqlite_errors::SqliteError;
+use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::service_layer::auth_service::AuthorizationUser;
+use crate::service_layer::MessageServiceResponse;
 use crate::{data_access_layer, AppState};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -22,25 +23,15 @@ pub struct CreateUserRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateUserResponse {
-    message: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct SwipeUserRequest {
-    pub swiper: u32,
-    pub swiped: u32,
+    pub swiper: usize,
+    pub swiped: usize,
     pub love: u8, // boolean for sqlite, 0 = dont love, 1 - love
-}
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct SwipeUserResponse {
-    message: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateUserInfosReq {
-    pub id: u32,
+    pub id: usize,
     pub name: String,
     pub password: String,
     pub email: String,
@@ -52,7 +43,7 @@ pub struct UpdateUserInfosReq {
     pub search_radius: u16,
     pub looking_for_age_min: u8,
     pub looking_for_age_max: u8,
-    pub description: String, // todo : check max length == 500
+    pub description: String,
 }
 
 pub async fn create_user(
@@ -68,23 +59,22 @@ pub async fn create_user(
         Algorithm::Argon2id,
         Version::V0x13,
         Params::new(M_COST, T_COST, P_COST, Some(OUTPUT_LEN))
-            .expect("Failed to build params for Argon2id"), // TODO : clean error
+            .expect("Failed to build params for Argon2id"),
     );
 
     let salt = SaltString::generate(&mut thread_rng());
     let hashed_password = hasher
         .hash_password(create_user_request.password.as_bytes(), &salt)
-        .expect("Could not hash password"); // TODO : clean error
+        .expect("Could not hash password");
     let phc_string = hashed_password.to_string();
     match user {
         Err(SqliteError::NotFound) => {
-            // todo : check the option age field : post with and without age, with and without impl default
             create_user_request.password = phc_string;
             match data_access_layer::user_dal::User::create_user(
                 &db,
                 create_user_request.into_inner(),
             ) {
-                Ok(()) => Ok(HttpResponse::Ok().json(CreateUserResponse {
+                Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
                     message: "User created".to_string(),
                 })),
                 Err(err) => Err(ServiceError::SqliteError(err)),
@@ -98,10 +88,10 @@ pub async fn create_user(
 pub async fn get_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(user_id): web::Path<u32>,
+    web::Path(user_id): web::Path<usize>,
 ) -> actixResult<HttpResponse, ServiceError> {
     if authorized.id != user_id {
-        return Err(ServiceError::UnknownServiceError); // TODO : create a specific error for this case
+        return Err(ServiceError::ForbiddenQuery);
     }
     let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, user_id);
     match user_found {
@@ -110,27 +100,37 @@ pub async fn get_user(
     }
 }
 
-pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
-    let users_found = data_access_layer::user_dal::User::get_users(&db);
-    match users_found {
-        Ok(users) => Ok(HttpResponse::Ok().json(users)),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
-}
+// This route is useless and dangerous..
+// pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
+//     let users_found = data_access_layer::user_dal::User::get_users(&db);
+//     match users_found {
+//         Ok(users) => Ok(HttpResponse::Ok().json(users)),
+//         Err(err) => Err(ServiceError::SqliteError(err)),
+//     }
+// }
 
 pub async fn update_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(user_id): web::Path<u32>,
+    web::Path(user_id): web::Path<usize>,
     update_user_request: web::Json<UpdateUserInfosReq>,
 ) -> actixResult<HttpResponse, ServiceError> {
     if authorized.id != user_id {
-        return Err(ServiceError::UnknownServiceError);
+        return Err(ServiceError::ForbiddenQuery);
+    }
+    if update_user_request.description.chars().count() > 1000 {
+        // Warning : Be carefull when counting string chars(), this needs tests..
+        return Err(ServiceError::ValueNotAccepted(
+            update_user_request.description.to_string(),
+            "Description string is too long".to_string(),
+        ));
     }
     let update_status =
         data_access_layer::user_dal::User::update_user_infos(&db, update_user_request.into_inner());
     match update_status {
-        Ok(()) => Ok(HttpResponse::Ok().body("sucess")),
+        Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
+            message: "User updated successfully".to_string(),
+        })),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
@@ -138,10 +138,10 @@ pub async fn update_user(
 pub async fn find_love(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path(user_id): web::Path<u32>,
+    web::Path(user_id): web::Path<usize>,
 ) -> actixResult<HttpResponse, ServiceError> {
     if authorized.id != user_id {
-        return Err(ServiceError::UnknownServiceError);
+        return Err(ServiceError::ForbiddenQuery);
     }
     let user = data_access_layer::user_dal::User::get_user_by_id(&db, authorized.id);
     let user = match user {
@@ -163,22 +163,30 @@ pub async fn find_love(
 
     match potential_lover {
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
-        Err(err) => Err(ServiceError::SqliteError(err)),
+        Err(err) => {
+            match err {
+                SqliteError::NotFound => Ok(HttpResponse::NotFound().json("Could not find a fitting potential lover")),
+                _ => Err(ServiceError::SqliteError(err)),
+            }            
+        }
     }
 }
 
+// Todo : swiper should only be able to swipe a user given by the backend (here you can set swiped_id to be anybody, inclduing yourself..)
 pub async fn swipe_user(
     authorized: AuthorizationUser,
     db: web::Data<AppState>,
-    web::Path((swiper_id, swiped_id)): web::Path<(u32, u32)>,
+    web::Path((swiper_id, swiped_id)): web::Path<(usize, usize)>,
     swipe_user_request: web::Json<SwipeUserRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
     if authorized.id != swiper_id {
-        return Err(ServiceError::UnknownServiceError);
+        return Err(ServiceError::ForbiddenQuery);
     }
     println!("{:?}", swipe_user_request);
 
-    // TODO : this might need to be placed in a transaction 
+    db.connection
+        .execute("BEGIN TRANSACTION", [])
+        .map_err(transaction_error)?;
     match data_access_layer::user_dal::User::swipe_user(
         &db,
         swipe_user_request.swiper,
@@ -188,21 +196,44 @@ pub async fn swipe_user(
         Ok(()) => {
             match data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id) {
                 Ok(2) => {
-                    match data_access_layer::lover_dal::create_lovers(
-                        &db, swiper_id, swiped_id,
-                    ) {
-                        Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
-                            message: "You matched !".to_string(),
-                        })),
-                        Err(err) => Err(ServiceError::SqliteError(err)),
+                    match data_access_layer::lover_dal::create_lovers(&db, swiper_id, swiped_id) {
+                        Ok(_) => {
+                            db.connection
+                                .execute("END TRANSACTION", [])
+                                .map_err(transaction_error)?;
+                            Ok(HttpResponse::Ok().json(MessageServiceResponse {
+                                message: "You matched !".to_string(),
+                            }))
+                        }
+                        Err(err) => {
+                            db.connection
+                                .execute("END TRANSACTION", [])
+                                .map_err(transaction_error)?;
+                            Err(ServiceError::SqliteError(err))
+                        }
                     }
-                },
-                Ok(_) => Ok(HttpResponse::Ok().json(SwipeUserResponse {
-                    message: "You love that person !".to_string(),
-                })),
-                Err(err) => Err(ServiceError::SqliteError(err)),
+                }
+                Ok(_) => {
+                    db.connection
+                        .execute("END TRANSACTION", [])
+                        .map_err(transaction_error)?;
+                    Ok(HttpResponse::Ok().json(MessageServiceResponse {
+                        message: "You love that person !".to_string(),
+                    }))
+                }
+                Err(err) => {
+                    db.connection
+                        .execute("END TRANSACTION", [])
+                        .map_err(transaction_error)?;
+                    Err(ServiceError::SqliteError(err))
+                }
             }
         }
-        Err(err) => Err(ServiceError::SqliteError(err)),
+        Err(err) => {
+            db.connection
+                .execute("END TRANSACTION", [])
+                .map_err(transaction_error)?;
+            Err(ServiceError::SqliteError(err))
+        }
     }
 }

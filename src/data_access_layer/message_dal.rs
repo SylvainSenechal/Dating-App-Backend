@@ -5,40 +5,42 @@ use serde::{Deserialize, Serialize};
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::message_service::CreateMessageRequest;
-use crate::{data_access_layer, AppState};
+use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
-    pub id: u32,
+    pub id: usize,
     pub message: String,
-    pub poster_id: u32,
-    pub love_id: u32,
+    pub poster_id: usize,
+    pub love_id: usize,
     // TODO : add date
 }
 
 pub fn create_message(
     db: &web::Data<AppState>,
     request: &CreateMessageRequest,
-) -> Result<i64, SqliteError> {
+) -> Result<usize, SqliteError> {
     let mut statement = db
         .connection
-        .prepare("INSERT INTO Messages (message, poster_id, love_id) VALUES (?, ?, ?)")
+        .prepare_cached("INSERT INTO Messages (message, poster_id, love_id) VALUES (?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
         .execute(params![request.message, request.poster_id, request.love_id])
         .map_err(map_sqlite_error)?;
 
-    Ok(db.connection.last_insert_rowid()) // TODO : This whole function in a transaction or last id could be wrong
+    let id_inserted: usize = db.connection.last_insert_rowid() as usize;
+
+    Ok(id_inserted) 
 }
 
 // Get messages in one love relations
 pub fn get_love_messages(
     db: &web::Data<AppState>,
-    love_id: u32,
+    love_id: usize,
 ) -> Result<Vec<Message>, SqliteError> {
     let mut statement = db
         .connection
-        .prepare("SELECT * FROM Messages WHERE love_id = ?")
+        .prepare_cached("SELECT * FROM Messages WHERE love_id = ?")
         .map_err(map_sqlite_error)?;
     let result_rows = statement
         .query_map(params![love_id], |row| {
@@ -62,11 +64,11 @@ pub fn get_love_messages(
 // Get all the messages of all the love relation of user_id
 pub fn get_lover_messages(
     db: &web::Data<AppState>,
-    user_id: u32,
+    user_id: usize,
 ) -> Result<Vec<Message>, SqliteError> {
     let mut statement = db
         .connection
-        .prepare("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover1 = ?)")
+        .prepare_cached("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover1 = ?)")
         .map_err(map_sqlite_error)?;
     let result_rows1 = statement
         .query_map(params![user_id], |row| {
@@ -81,7 +83,7 @@ pub fn get_lover_messages(
 
     let mut statement = db
         .connection
-        .prepare("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover2 = ?)")
+        .prepare_cached("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover2 = ?)")
         .map_err(map_sqlite_error)?;
     let result_rows2 = statement
         .query_map(params![user_id], |row| {
@@ -101,7 +103,6 @@ pub fn get_lover_messages(
     for message in result_rows2 {
         messages.push(message.map_err(map_sqlite_error)?);
     }
-    println!("{:?}", messages);
 
     Ok(messages)
 }

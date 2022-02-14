@@ -1,7 +1,7 @@
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
-use serde::Serialize;
 use std::{fmt, ops::Add};
+use crate::my_errors::{ErrorResponse, service_errors::ServiceError};
 
 #[derive(Debug)]
 pub enum SqliteError {
@@ -13,7 +13,7 @@ pub enum SqliteError {
 }
 
 impl SqliteError {
-    pub fn name(&self) -> String {
+    pub fn error_message(&self) -> String {
         match self {
             Self::NotFound => "Ressource not found".to_string(),
             Self::SqliteFailureExplained(sqlite_failure_detail, explaination) => {
@@ -32,14 +32,8 @@ impl fmt::Display for SqliteError {
         write!(f, "{:?}", self)
     }
 }
-#[derive(Serialize)]
 
-struct ErrorResponse { // todo : this is declared twice in service and sqlite errors
-    code: u16,
-    error: String,
-    message: String,
-}
-impl actix_web::ResponseError for SqliteError { // todo : this might not be useful anymore as we return service errors now
+impl actix_web::ResponseError for SqliteError {
     fn status_code(&self) -> StatusCode {
         match *self {
             Self::NotFound => StatusCode::NOT_FOUND,
@@ -54,16 +48,15 @@ impl actix_web::ResponseError for SqliteError { // todo : this might not be usef
         let status_code = self.status_code();
         let error_response = ErrorResponse {
             code: status_code.as_u16(),
-            message: self.to_string(),
-            error: self.name(),
+            message: self.error_message(),
+            detailed_error: self.to_string(),
         };
         HttpResponse::build(status_code).json(error_response)
     }
 }
 
 pub fn map_sqlite_error(e: rusqlite::Error) -> SqliteError {
-    // Todo : Add this to the logger
-    println!("map sqlite error found : {:?}", e);
+    println!("Map sqlite error : {:?}", e);
 
     match e {
         rusqlite::Error::QueryReturnedNoRows => SqliteError::NotFound,
@@ -79,4 +72,23 @@ pub fn map_sqlite_error(e: rusqlite::Error) -> SqliteError {
 
         _ => SqliteError::UnknownSqliteError,
     }
+}
+
+pub fn transaction_error(e: rusqlite::Error) -> ServiceError {
+    println!("Transaction error : {:?}", e);
+    ServiceError::TransactionError
+    // match e {
+    //     rusqlite::Error::QueryReturnedNoRows => SqliteError::NotFound,
+    //     rusqlite::Error::SqliteFailure(sqlite_failure_detail, Some(explaination)) => {
+    //         SqliteError::SqliteFailureExplained(sqlite_failure_detail, explaination)
+    //     }
+    //     rusqlite::Error::SqliteFailure(sqlite_failure_detail, None) => {
+    //         SqliteError::SqliteFailure(sqlite_failure_detail)
+    //     }
+    //     rusqlite::Error::InvalidColumnIndex(_) => SqliteError::SqliteFailureNoText,
+    //     rusqlite::Error::InvalidColumnType(_, _, _) => SqliteError::SqliteFailureNoText,
+    //     rusqlite::Error::InvalidColumnName(_) => SqliteError::SqliteFailureNoText,
+
+    //     _ => SqliteError::UnknownSqliteError,
+    // }
 }

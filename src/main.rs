@@ -1,24 +1,22 @@
-use actix::{Actor, StreamHandler};
+use actix::Actor;
 use actix_cors::Cors;
 use actix_web::http::header;
 use actix_web::{middleware, web, App, HttpResponse, HttpServer};
-use actix_web_actors::ws;
 use rusqlite::Connection;
-use std::collections::{HashMap};
+use std::collections::HashMap;
 
-// mod auth;
+// modules system : https://www.sheshbabu.com/posts/rust-module-system/
 mod constants;
 mod data_access_layer;
 mod my_errors;
 mod service_layer;
 
 use constants::constants::DATABASE_NAME;
-// TODO : see and_then()
-// TODO : Check swag generation
-// modules system : https://www.sheshbabu.com/posts/rust-module-system/
-// TODO : recheck authorization + one user can only do what updates on himself
-// TODO : replace id u32 by usize ?
+// TODO : Database creation outside
+// TODO : Rework Actions CI/CD
+// TODO : Randomize the potential lover selection
 
+#[derive(Debug)]
 pub struct AppState {
     connection: Connection,
 }
@@ -26,21 +24,22 @@ pub struct AppState {
 impl AppState {
     fn new() -> AppState {
         let connection =
-            Connection::open(DATABASE_NAME).expect("Could not connect to the database");
-        let res1 = connection.query_row("PRAGMA journal_mode = WAL;", [], |row| {
+        Connection::open(DATABASE_NAME).expect("Could not connect to the database");
+        let pragma1 = connection.query_row("PRAGMA journal_mode = WAL;", [], |row| {
             let res: String = row.get(0).unwrap();
             Ok(res)
-        }); //.expect("err pragma 1");
-        let res2 = connection.execute("PRAGMA synchronous = 0;", []); //.expect("err pragma 2");
-        let res3 = connection.execute("PRAGMA cache_size = 1000000;", []); //.expect("err pragma 3");
-                                                                           // let _ = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
-                                                                           // let res4 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
+        }).expect("Error pragma WAL mode on");
+        let pragma2 = connection.execute("PRAGMA synchronous = 0;", []).expect("Error pragma synchronous = 0");
+        let pragma3 = connection.execute("PRAGMA cache_size = 1000000;", []).expect("Error pragma cache_size set");
+        let pragma4 = connection.execute("PRAGMA foreign_keys = ON;", []).expect("Error pragma foreign keys = On");
+        // let pragma4 = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
+        // let pragma5 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
 
-        // TODO : check if needed to add pragna enable foreign keys
-        println!("1 {:?}", res1);
-        println!("2 {:?}", res2);
-        println!("3 {:?}", res3);
-        // println!("4 {:?}", res4);
+        println!("pragma 1 {:?}", pragma1);
+        println!("pragma 2 {:?}", pragma2);
+        println!("pragma 3 {:?}", pragma3);
+        println!("pragma 4 {:?}", pragma4);
+
         AppState {
             connection: connection,
         }
@@ -63,7 +62,7 @@ impl AppState {
                 search_radius       INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10, --unit is kilometers
                 looking_for_age_min INTEGER CHECK (looking_for_age_min > 17 AND looking_for_age_min < 128 AND looking_for_age_min <= looking_for_age_max) NOT NULL DEFAULT 18,
                 looking_for_age_max INTEGER CHECK (looking_for_age_max > 17 AND looking_for_age_max < 128) NOT NULL DEFAULT 127,
-                description         TEXT DEFAULT ''
+                description         TEXT CHECK(LENGTH(message) <= 1000) DEFAULT ''
             )",
                 [],
             )
@@ -117,10 +116,10 @@ impl AppState {
             .execute(
                 "CREATE TABLE IF NOT EXISTS Messages (
                 message_id  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                message     TEXT,
+                message     TEXT CHECK(LENGTH(message) <= 1000),
                 poster_id   INTEGER NOT NULL,
                 love_id     INTEGER NOT NULL,
-                date        TEXT,
+                date        TEXT NOT NULL,  --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
                 FOREIGN KEY(poster_id) REFERENCES Users(user_id),
                 FOREIGN KEY(love_id)   REFERENCES Lovers(love_id)
             )",
@@ -132,6 +131,11 @@ impl AppState {
 
 async fn p404() -> HttpResponse {
     HttpResponse::NotFound().body("Four O Four : Nothing to see here dud 👀")
+}
+
+async fn fake_admin() -> HttpResponse {
+    println!("Fake admin visited");
+    HttpResponse::NotFound().body("What are you doing here 👀")
 }
 
 #[actix_web::main]
@@ -181,51 +185,65 @@ async fn main() -> std::io::Result<()> {
                 "/ws/",
                 web::get().to(service_layer::websocket_service::index_websocket),
             )
-            .service(
-                web::resource("/users")
-                    .route(web::post().to(service_layer::user_service::create_user))
-                    .route(web::get().to(service_layer::user_service::get_users)),
+            .route(
+                "/admin",
+                web::to(fake_admin),
             )
             .service(
-                web::resource("/users/{user_id}")
-                    .route(web::get().to(service_layer::user_service::get_user))
-                    .route(web::put().to(service_layer::user_service::update_user)),
+                web::scope("/users")
+                    .service(
+                        web::resource("")
+                            .route(web::post().to(service_layer::user_service::create_user))
+                            // .route(web::get().to(service_layer::user_service::get_users)), dangerous route..
+                    )
+                    .service(
+                        web::resource("/{user_id}")
+                            .route(web::get().to(service_layer::user_service::get_user))
+                            .route(web::put().to(service_layer::user_service::update_user)),
+                    )
+                    .service(
+                        web::resource("/{user_id}/findlover")
+                            .route(web::get().to(service_layer::user_service::find_love)),
+                    )
+                    .service(
+                        web::resource("/{swiper_id}/loves/{swiped_id}")
+                            .route(web::post().to(service_layer::user_service::swipe_user)),
+                    )
+                    .service(
+                        web::resource("/{user_id}/statistics/loved")
+                            .route(web::get().to(service_layer::statistics_service::loved_count)),
+                    )
+                    .service(
+                        web::resource("/{user_id}/statistics/rejected").route(
+                            web::get().to(service_layer::statistics_service::rejected_count),
+                        ),
+                    )
+                    .service(
+                        web::resource("/{user_id}/statistics/loving")
+                            .route(web::get().to(service_layer::statistics_service::loving_count)),
+                    )
+                    .service(
+                        web::resource("/{user_id}/statistics/rejecting").route(
+                            web::get().to(service_layer::statistics_service::rejecting_count),
+                        ),
+                    ),
             )
             .service(
-                web::resource("/users/{user_id}/findlover")
-                    .route(web::get().to(service_layer::user_service::find_love)),
-            )
-            .service(
-                web::resource("/users/{swiper_id}/loves/{swiped_id}")
-                    .route(web::post().to(service_layer::user_service::swipe_user)),
-            )
-            .service(
-                web::resource("/users/{user_id}/statistics/loved")
-                    .route(web::get().to(service_layer::statistics_service::loved_count)),
-            )
-            .service(
-                web::resource("/users/{user_id}/statistics/rejected")
-                    .route(web::get().to(service_layer::statistics_service::rejected_count)),
-            )
-            .service(
-                web::resource("/users/{user_id}/statistics/loving")
-                    .route(web::get().to(service_layer::statistics_service::loving_count)),
-            )
-            .service(
-                web::resource("/users/{user_id}/statistics/rejecting")
-                    .route(web::get().to(service_layer::statistics_service::rejecting_count)),
-            )
-            .service(
-                web::resource("/messages")
-                    .route(web::post().to(service_layer::message_service::create_message)),
-            )
-            .service(
-                web::resource("/messages/{love_id}")
-                    .route(web::get().to(service_layer::message_service::get_love_messages)),
-            )
-            .service(
-                web::resource("/messages/users/{user_id}")
-                    .route(web::get().to(service_layer::message_service::get_lover_messages)),
+                web::scope("/messages")
+                    .service(
+                        web::resource("")
+                            .route(web::post().to(service_layer::message_service::create_message)),
+                    )
+                    .service(
+                        web::resource("/{love_id}").route(
+                            web::get().to(service_layer::message_service::get_love_messages),
+                        ),
+                    )
+                    .service(
+                        web::resource("/users/{user_id}").route(
+                            web::get().to(service_layer::message_service::get_lover_messages),
+                        ),
+                    ),
             )
             .service(
                 web::resource("/photos")
@@ -236,24 +254,19 @@ async fn main() -> std::io::Result<()> {
                     .route(web::get().to(service_layer::lover_service::get_lovers)),
             )
             .service(
-                web::resource("/auth").route(web::post().to(service_layer::auth_service::login)),
-            )
-            .service(
-                web::resource("/auth/refresh")
-                    .route(web::post().to(service_layer::auth_service::token_refresh)),
-            )
-            .default_service(
-                web::resource("")
-                    // TODO : revoir ca
-                    .route(web::get().to(p404))
-                    .route(
-                        web::route()
-                            // .guard(guard::Not(guard::Get()))
-                            .to(HttpResponse::MethodNotAllowed),
+                web::scope("/auth")
+                    .service(
+                        web::resource("").route(web::post().to(service_layer::auth_service::login)),
+                    )
+                    .service(
+                        web::resource("/refresh")
+                            .route(web::post().to(service_layer::auth_service::token_refresh)),
                     ),
             )
+            .default_service(web::to(p404))
     })
     .bind("127.0.0.1:8080")?
+    // .workers(8) // Default is number of physical cores
     .run()
     .await
 }
