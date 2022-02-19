@@ -8,6 +8,7 @@ use crate::service_layer::MessageServiceResponse;
 use crate::{data_access_layer, AppState};
 use actix::Addr;
 use actix_web::{web, HttpResponse, Result as actixResult};
+use chrono;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -15,7 +16,6 @@ pub struct CreateMessageRequest {
     pub message: String,
     pub poster_id: usize,
     pub love_id: usize,
-    // TODO : add date
 }
 
 // Post a message by poster_id in the love_id relation
@@ -47,11 +47,16 @@ pub async fn create_message(
             "Message content string is too long".to_string(),
         ));
     }
+
+    let creation_datetime = format!("{:?}", chrono::offset::Utc::now());
     db.connection
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
-    let result_creation_message =
-        data_access_layer::message_dal::create_message(&db, create_message_request.deref());
+    let result_creation_message = data_access_layer::message_dal::create_message(
+        &db,
+        create_message_request.deref(),
+        &creation_datetime,
+    );
     db.connection
         .execute("END TRANSACTION", [])
         .map_err(transaction_error)?;
@@ -63,6 +68,7 @@ pub async fn create_message(
                 id_message: id_message,
                 message: create_message_request.message.to_string(),
                 poster_id: create_message_request.poster_id,
+                creation_datetime: creation_datetime,
             });
             Ok(HttpResponse::Ok().json(MessageServiceResponse {
                 message: "Message created".to_string(),

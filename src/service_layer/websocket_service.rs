@@ -58,6 +58,7 @@ impl Server {
         poster_id: usize,
         message: &str,
         message_id: usize,
+        creation_datetime: String,
     ) {
         println!("sending messages");
         println!("lovers r : {:?}", self.love_chat_rooms);
@@ -68,7 +69,8 @@ impl Server {
                     "love_id": love_room,
                     "message": message,
                     "message_id": message_id,
-                    "poster_id": poster_id
+                    "poster_id": poster_id,
+                    "creation_datetime": creation_datetime
                 });
                 match lover.do_send(Message(message.to_string())) {
                     Ok(_) => (),
@@ -86,6 +88,7 @@ pub struct ChatMessage {
     pub id_message: usize,
     pub message: String,
     pub poster_id: usize,
+    pub creation_datetime: String,
 }
 #[derive(ActixMessage, Debug)]
 #[rtype(result = "()")]
@@ -145,6 +148,7 @@ impl Handler<ChatMessage> for Server {
             msg.poster_id,
             msg.message.as_str(),
             msg.id_message,
+            msg.creation_datetime,
         );
     }
 }

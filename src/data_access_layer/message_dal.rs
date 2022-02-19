@@ -13,24 +13,25 @@ pub struct Message {
     pub message: String,
     pub poster_id: usize,
     pub love_id: usize,
-    // TODO : add date
+    pub creation_datetime: String
 }
 
 pub fn create_message(
     db: &web::Data<AppState>,
     request: &CreateMessageRequest,
+    creation_datetime: &String,
 ) -> Result<usize, SqliteError> {
     let mut statement = db
         .connection
-        .prepare_cached("INSERT INTO Messages (message, poster_id, love_id) VALUES (?, ?, ?)")
+        .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, creation_datetime) VALUES (?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
-        .execute(params![request.message, request.poster_id, request.love_id])
+        .execute(params![request.message, request.poster_id, request.love_id, creation_datetime])
         .map_err(map_sqlite_error)?;
 
     let id_inserted: usize = db.connection.last_insert_rowid() as usize;
 
-    Ok(id_inserted) 
+    Ok(id_inserted)
 }
 
 // Get messages in one love relations
@@ -49,6 +50,7 @@ pub fn get_love_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                creation_datetime: row.get("creation_datetime")?,
             })
         })
         .map_err(map_sqlite_error)?;
@@ -77,6 +79,7 @@ pub fn get_lover_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                creation_datetime: row.get("creation_datetime")?,
             })
         })
         .map_err(map_sqlite_error)?;
@@ -92,6 +95,7 @@ pub fn get_lover_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                creation_datetime: row.get("creation_datetime")?,
             })
         })
         .map_err(map_sqlite_error)?;

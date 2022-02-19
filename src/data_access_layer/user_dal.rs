@@ -1,4 +1,5 @@
 use actix_web::web;
+use chrono;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +14,7 @@ pub struct User {
     pub name: String,
     pub password: String,
     pub email: String,
+    pub last_seen: String,
     pub age: u8,
     pub latitude: f32,
     pub longitude: f32,
@@ -31,13 +33,14 @@ impl User {
     ) -> Result<(), SqliteError> {
         let mut statement = db
             .connection
-            .prepare_cached("INSERT INTO Users (name, password, email, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+            .prepare_cached("INSERT INTO Users (name, password, email, last_seen, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
             .execute(params![
                 user.name,
                 user.password,
                 user.email,
+                format!("{:?}", chrono::offset::Utc::now()), // Last seen = now
                 user.age,
                 user.latitude,
                 user.longitude,
@@ -62,6 +65,7 @@ impl User {
                     name: row.get("name")?,
                     email: row.get("email")?,
                     password: "Have fun with this password bro".to_string(),
+                    last_seen: row.get("last_seen")?,
                     age: row.get("age")?,
                     latitude: row.get("latitude")?,
                     longitude: row.get("longitude")?,
@@ -106,6 +110,7 @@ impl User {
                     name: row.get("name")?,
                     password: "Have fun with this password bro".to_string(),
                     email: row.get("email")?,
+                    last_seen: row.get("last_seen")?,
                     age: row.get("age")?,
                     latitude: row.get("latitude")?,
                     longitude: row.get("longitude")?,
@@ -132,6 +137,7 @@ impl User {
                 SET name = ?,
                 email = ?,
                 age = ?,
+                last_seen = ?,
                 latitude = ?,
                 longitude = ?,
                 gender = ?,
@@ -149,6 +155,7 @@ impl User {
                 user.name,
                 user.email,
                 user.age,
+                format!("{:?}", chrono::offset::Utc::now()), // Last seen = now
                 user.latitude,
                 user.longitude,
                 user.gender,
@@ -158,6 +165,29 @@ impl User {
                 user.looking_for_age_max,
                 user.description,
                 user.id
+            ])
+            .map_err(map_sqlite_error)?;
+
+        Ok(())
+    }
+
+    pub fn update_user_last_seen(
+        db: &web::Data<AppState>,
+        user_id: usize,
+    ) -> Result<(), SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare_cached(
+                "UPDATE Users
+                SET last_seen = ?
+                WHERE user_id = ?",
+            )
+            .map_err(map_sqlite_error)?;
+
+        statement
+            .execute(params![
+                format!("{:?}", chrono::offset::Utc::now()), // Last seen = now
+                user_id
             ])
             .map_err(map_sqlite_error)?;
 
@@ -176,6 +206,7 @@ impl User {
                     name: row.get("name")?,
                     password: "Have fun with this password bro".to_string(),
                     email: row.get("email")?,
+                    last_seen: row.get("last_seen")?,
                     age: row.get("age")?,
                     latitude: row.get("latitude")?,
                     longitude: row.get("longitude")?,
@@ -217,33 +248,41 @@ impl User {
                 WHERE user_id <> ?
                 AND gender = ?
                 AND looking_for = ?
+                AND age <= ?
+                AND age >= ?
                 AND user_id NOT IN (
                     SELECT swiped as user_id
                     FROM MatchingResults
                     WHERE swiper = ?
                 )
+                ORDER BY datetime(last_seen) DESC -- Getting the most recently active user
                ",
             )
             .map_err(map_sqlite_error)?;
-
+        println!("{}", age_max);
+        println!("{}", age_min);
         statement
-            .query_row(params![user_id, looking_for, gender, user_id], |row| {
-                Ok(User {
-                    id: row.get("user_id")?,
-                    name: row.get("name")?,
-                    password: "Have fun with this password bro".to_string(),
-                    email: row.get("email")?,
-                    age: row.get("age")?,
-                    latitude: row.get("latitude")?,
-                    longitude: row.get("longitude")?,
-                    gender: row.get("gender")?,
-                    looking_for: row.get("looking_for")?,
-                    search_radius: row.get("search_radius")?,
-                    looking_for_age_min: row.get("looking_for_age_min")?,
-                    looking_for_age_max: row.get("looking_for_age_max")?,
-                    description: row.get("description")?,
-                })
-            })
+            .query_row(
+                params![user_id, looking_for, gender,  age_max, age_min, user_id],
+                |row| {
+                    Ok(User {
+                        id: row.get("user_id")?,
+                        name: row.get("name")?,
+                        password: "Have fun with this password bro".to_string(),
+                        email: row.get("email")?,
+                        last_seen: row.get("last_seen")?,
+                        age: row.get("age")?,
+                        latitude: row.get("latitude")?,
+                        longitude: row.get("longitude")?,
+                        gender: row.get("gender")?,
+                        looking_for: row.get("looking_for")?,
+                        search_radius: row.get("search_radius")?,
+                        looking_for_age_min: row.get("looking_for_age_min")?,
+                        looking_for_age_max: row.get("looking_for_age_max")?,
+                        description: row.get("description")?,
+                    })
+                },
+            )
             .map_err(map_sqlite_error)
     }
 

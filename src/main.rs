@@ -12,10 +12,12 @@ mod my_errors;
 mod service_layer;
 
 use constants::constants::DATABASE_NAME;
-// TODO : Database creation outside
 // TODO : Rework Actions CI/CD
-// TODO : Randomize the potential lover selection
-
+// TODO : Show last active time on discussion
+// TODO : Show when swiping if the user liked me already
+// TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
+// TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
+// TODO : GET IP of the request
 #[derive(Debug)]
 pub struct AppState {
     connection: Connection,
@@ -44,89 +46,6 @@ impl AppState {
             connection: connection,
         }
     }
-
-    fn create_database(&self) {
-        println!("Creating user database");
-        self.connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS Users (
-                user_id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                name                TEXT NOT NULL,
-                password            TEXT NOT NULL,
-                email               TEXT NOT NULL UNIQUE,
-                age                 INTEGER CHECK (age > 17 AND age < 128) NOT NULL,
-                latitude            REAL NOT NULL,
-                longitude           REAL NOT NULL,
-                gender              TEXT CHECK (gender IN ('male','female')) NOT NULL,
-                looking_for         TEXT CHECK (looking_for IN ('male','female')) NOT NULL,
-                search_radius       INTEGER CHECK (search_radius > 0 AND search_radius < 65535) NOT NULL DEFAULT 10, --unit is kilometers
-                looking_for_age_min INTEGER CHECK (looking_for_age_min > 17 AND looking_for_age_min < 128 AND looking_for_age_min <= looking_for_age_max) NOT NULL DEFAULT 18,
-                looking_for_age_max INTEGER CHECK (looking_for_age_max > 17 AND looking_for_age_max < 128) NOT NULL DEFAULT 127,
-                description         TEXT CHECK(LENGTH(message) <= 1000) DEFAULT ''
-            )",
-                [],
-            )
-            .expect("Could not create table Users");
-        self.connection
-            .execute("CREATE INDEX IF NOT EXISTS nomIndex ON Users(name)", [])
-            .expect("Could not create index on table persons");
-
-        self.connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS Photos (
-                photo_id    INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                user_id     INTEGER NOT NULL,
-                url         TEXT NOT NULL,
-                FOREIGN KEY(user_id) REFERENCES Users(user_id)
-            )",
-                [],
-            )
-            .expect("Could not create table photos");
-
-        self.connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS MatchingResults (
-                match_id            INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                swiper              INTEGER NOT NULL,
-                swiped              INTEGER NOT NULL,
-                love                INTEGER CHECK (love IN (0, 1)) NOT NULL,
-                FOREIGN KEY(swiper) REFERENCES Users(user_id),
-                FOREIGN KEY(swiped) REFERENCES Users(user_id),
-                UNIQUE (swiper, swiped)
-            )",
-                [],
-            )
-            .expect("Could not create table MatchingResults");
-
-        self.connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS Lovers (
-                love_id             INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                lover1              INTEGER NOT NULL,
-                lover2              INTEGER NOT NULL,
-                FOREIGN KEY(lover1) REFERENCES Users(user_id),
-                FOREIGN KEY(lover2) REFERENCES Users(user_id),
-                UNIQUE (lover1, lover2)
-            )",
-                [],
-            )
-            .expect("Could not create table Lovers");
-
-        self.connection
-            .execute(
-                "CREATE TABLE IF NOT EXISTS Messages (
-                message_id  INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                message     TEXT CHECK(LENGTH(message) <= 1000),
-                poster_id   INTEGER NOT NULL,
-                love_id     INTEGER NOT NULL,
-                date        TEXT NOT NULL,  --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
-                FOREIGN KEY(poster_id) REFERENCES Users(user_id),
-                FOREIGN KEY(love_id)   REFERENCES Lovers(love_id)
-            )",
-                [],
-            )
-            .expect("Could not create table Messages");
-    }
 }
 
 async fn p404() -> HttpResponse {
@@ -146,9 +65,6 @@ async fn main() -> std::io::Result<()> {
         "actix_web=debug,actix_server=info,actix_web=info",
     );
     env_logger::init();
-
-    let app: AppState = AppState::new();
-    app.create_database();
 
     let server = service_layer::websocket_service::Server {
         sessions: HashMap::new(),

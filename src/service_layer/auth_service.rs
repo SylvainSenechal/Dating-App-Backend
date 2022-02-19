@@ -53,8 +53,10 @@ pub async fn login(
     db: web::Data<AppState>,
     login_user: web::Json<UserLoginRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    let user_found =
-        data_access_layer::user_dal::User::get_user_password_by_email(&db, login_user.email.to_string());
+    let user_found = data_access_layer::user_dal::User::get_user_password_by_email(
+        &db,
+        login_user.email.to_string(),
+    );
 
     match user_found {
         Ok((user_id, password)) => {
@@ -161,8 +163,12 @@ impl FromRequest for AuthorizationUser {
     type Future = Ready<Result<AuthorizationUser, Error>>;
     type Config = ();
 
-    fn from_request(_req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
-        let _auth = _req.headers().get("Authorization");
+    fn from_request(
+        // db: web::Data<AppState>,
+        req: &HttpRequest,
+        _payload: &mut dev::Payload,
+    ) -> Self::Future {
+        let _auth = req.headers().get("Authorization");
         match _auth {
             Some(val) => {
                 if let Ok(header) = val.to_str() {
@@ -184,6 +190,22 @@ impl FromRequest for AuthorizationUser {
                 match token_data {
                     Ok(data) => {
                         println!("Auth accepted for {}", data.claims.sub);
+                        // Anytime a user perform a protected action, we update it's lastseen field to now
+                        if let Some(db) = req.app_data::<web::Data<AppState>>() {
+                            match data_access_layer::user_dal::User::update_user_last_seen(
+                                &db,
+                                data.claims.sub,
+                            ) {
+                                Ok(_) => (),
+                                Err(e) => {
+                                    println!(
+                                        "Error updating user last seen in authorization : {:?}",
+                                        e
+                                    );
+                                }
+                            }
+                        }
+
                         return ok(AuthorizationUser {
                             id: data.claims.sub,
                         });
@@ -194,7 +216,10 @@ impl FromRequest for AuthorizationUser {
                     }
                 }
             }
-            None => err(ErrorUnauthorized("blocked!")),
+            None => {
+                println!("No Authorization header found");
+                err(ErrorUnauthorized("blocked!"))
+            }
         }
     }
 }
