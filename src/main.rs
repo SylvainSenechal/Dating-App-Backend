@@ -26,14 +26,22 @@ pub struct AppState {
 impl AppState {
     fn new() -> AppState {
         let connection =
-        Connection::open(DATABASE_NAME).expect("Could not connect to the database");
-        let pragma1 = connection.query_row("PRAGMA journal_mode = WAL;", [], |row| {
-            let res: String = row.get(0).unwrap();
-            Ok(res)
-        }).expect("Error pragma WAL mode on");
-        let pragma2 = connection.execute("PRAGMA synchronous = 0;", []).expect("Error pragma synchronous = 0");
-        let pragma3 = connection.execute("PRAGMA cache_size = 1000000;", []).expect("Error pragma cache_size set");
-        let pragma4 = connection.execute("PRAGMA foreign_keys = ON;", []).expect("Error pragma foreign keys = On");
+            Connection::open(DATABASE_NAME).expect("Could not connect to the database");
+        let pragma1 = connection
+            .query_row("PRAGMA journal_mode = WAL;", [], |row| {
+                let res: String = row.get(0).unwrap();
+                Ok(res)
+            })
+            .expect("Error pragma WAL mode on");
+        let pragma2 = connection
+            .execute("PRAGMA synchronous = 0;", [])
+            .expect("Error pragma synchronous = 0");
+        let pragma3 = connection
+            .execute("PRAGMA cache_size = 1000000;", [])
+            .expect("Error pragma cache_size set");
+        let pragma4 = connection
+            .execute("PRAGMA foreign_keys = ON;", [])
+            .expect("Error pragma foreign keys = On");
         // let pragma4 = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
         // let pragma5 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
 
@@ -77,7 +85,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let cors = Cors::default()
             .allowed_origin("http://localhost:3000")
-            .allowed_methods(vec!["GET", "POST", "PUT"])
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
             .max_age(3600);
@@ -101,21 +109,18 @@ async fn main() -> std::io::Result<()> {
                 "/ws/",
                 web::get().to(service_layer::websocket_service::index_websocket),
             )
-            .route(
-                "/admin",
-                web::to(fake_admin),
-            )
+            .route("/admin", web::to(fake_admin))
             .service(
                 web::scope("/users")
                     .service(
                         web::resource("")
-                            .route(web::post().to(service_layer::user_service::create_user))
-                            // .route(web::get().to(service_layer::user_service::get_users)), dangerous route..
+                            .route(web::post().to(service_layer::user_service::create_user)), // .route(web::get().to(service_layer::user_service::get_users)), dangerous route..
                     )
                     .service(
                         web::resource("/{user_id}")
                             .route(web::get().to(service_layer::user_service::get_user))
-                            .route(web::put().to(service_layer::user_service::update_user)),
+                            .route(web::put().to(service_layer::user_service::update_user))
+                            .route(web::delete().to(service_layer::user_service::delete_user)),
                     )
                     .service(
                         web::resource("/{user_id}/findlover")

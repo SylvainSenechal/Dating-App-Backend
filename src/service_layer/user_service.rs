@@ -100,6 +100,23 @@ pub async fn get_user(
     }
 }
 
+pub async fn delete_user(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+    web::Path(user_id): web::Path<usize>,
+) -> actixResult<HttpResponse, ServiceError> {
+    if authorized.id != user_id {
+        return Err(ServiceError::ForbiddenQuery);
+    }
+    let deleted = data_access_layer::user_dal::User::delete_user_by_id(&db, user_id);
+    match deleted {
+        Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
+            message: "User deleted successfully".to_string(),
+        })),
+        Err(err) => Err(ServiceError::SqliteError(err)),
+    }
+}
+
 // This route is useless and dangerous..
 // pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
 //     let users_found = data_access_layer::user_dal::User::get_users(&db);

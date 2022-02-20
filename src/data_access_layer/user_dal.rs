@@ -125,6 +125,19 @@ impl User {
             .map_err(map_sqlite_error)
     }
 
+    pub fn delete_user_by_id(db: &web::Data<AppState>, user_id: usize) -> Result<(), SqliteError> {
+        let mut statement = db
+            .connection
+            .prepare_cached("DELETE FROM Users WHERE user_id = ?")
+            .map_err(map_sqlite_error)?;
+
+        statement
+            .execute(params![user_id])
+            .map_err(map_sqlite_error)?;
+        
+        Ok(())
+    }
+
     pub fn update_user_infos(
         db: &web::Data<AppState>,
         user: UpdateUserInfosReq,

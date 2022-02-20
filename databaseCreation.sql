@@ -35,23 +35,23 @@ CREATE TABLE IF NOT EXISTS Photos (
     photo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     url TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES Users(user_id)
+    FOREIGN KEY(user_id) REFERENCES Users(user_id) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS MatchingResults (
     match_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     swiper INTEGER NOT NULL,
     swiped INTEGER NOT NULL,
     love INTEGER CHECK (love IN (0, 1)) NOT NULL,
-    FOREIGN KEY(swiper) REFERENCES Users(user_id),
-    FOREIGN KEY(swiped) REFERENCES Users(user_id),
+    FOREIGN KEY(swiper) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(swiped) REFERENCES Users(user_id) ON DELETE CASCADE,
     UNIQUE (swiper, swiped)
 );
 CREATE TABLE IF NOT EXISTS Lovers (
     love_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     lover1 INTEGER NOT NULL,
     lover2 INTEGER NOT NULL,
-    FOREIGN KEY(lover1) REFERENCES Users(user_id),
-    FOREIGN KEY(lover2) REFERENCES Users(user_id),
+    FOREIGN KEY(lover1) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(lover2) REFERENCES Users(user_id) ON DELETE CASCADE,
     UNIQUE (lover1, lover2)
 );
 CREATE TABLE IF NOT EXISTS Messages (
@@ -61,6 +61,6 @@ CREATE TABLE IF NOT EXISTS Messages (
     love_id INTEGER NOT NULL,
     creation_datetime TEXT NOT NULL,
     --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
-    FOREIGN KEY(poster_id) REFERENCES Users(user_id),
-    FOREIGN KEY(love_id) REFERENCES Lovers(love_id)
+    FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(love_id) REFERENCES Lovers(love_id) ON DELETE CASCADE
 );
