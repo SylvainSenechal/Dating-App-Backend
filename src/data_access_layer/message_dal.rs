@@ -13,7 +13,7 @@ pub struct Message {
     pub message: String,
     pub poster_id: usize,
     pub love_id: usize,
-    pub creation_datetime: String
+    pub creation_datetime: String,
 }
 
 pub fn create_message(
@@ -26,7 +26,12 @@ pub fn create_message(
         .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, creation_datetime) VALUES (?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
-        .execute(params![request.message, request.poster_id, request.love_id, creation_datetime])
+        .execute(params![
+            request.message,
+            request.poster_id,
+            request.love_id,
+            creation_datetime
+        ])
         .map_err(map_sqlite_error)?;
 
     let id_inserted: usize = db.connection.last_insert_rowid() as usize;

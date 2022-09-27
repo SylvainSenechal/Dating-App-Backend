@@ -1,14 +1,16 @@
-use std::io::Write;
 use actix_multipart::Multipart;
 use actix_web::{web, Error, HttpResponse};
 use futures_util::TryStreamExt as _;
+use std::io::Write;
 use uuid::Uuid;
 
 use crate::service_layer::auth_service::AuthorizationUser;
 
-
 // https://github.com/actix/examples/tree/master/forms/multipart
-pub async fn save_file(authorized: AuthorizationUser, mut payload: Multipart) -> Result<HttpResponse, Error> {
+pub async fn save_file(
+    authorized: AuthorizationUser,
+    mut payload: Multipart,
+) -> Result<HttpResponse, Error> {
     println!("ID user authorized to save file : {}", authorized.id);
     // iterate over multipart stream
     while let Some(mut field) = payload.try_next().await? {

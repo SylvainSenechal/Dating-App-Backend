@@ -10,6 +10,7 @@ mod constants;
 mod data_access_layer;
 mod my_errors;
 mod service_layer;
+mod utilities;
 
 use constants::constants::DATABASE_NAME;
 // TODO : Rework Actions CI/CD

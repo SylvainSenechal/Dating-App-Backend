@@ -134,7 +134,7 @@ impl User {
         statement
             .execute(params![user_id])
             .map_err(map_sqlite_error)?;
-        
+
         Ok(())
     }
 
@@ -276,7 +276,7 @@ impl User {
         println!("{}", age_min);
         statement
             .query_row(
-                params![user_id, looking_for, gender,  age_max, age_min, user_id],
+                params![user_id, looking_for, gender, age_max, age_min, user_id],
                 |row| {
                     Ok(User {
                         id: row.get("user_id")?,

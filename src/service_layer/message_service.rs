@@ -4,8 +4,7 @@ use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::service_layer::auth_service::AuthorizationUser;
 use crate::service_layer::websocket_service::{ChatMessage, Server};
-use crate::service_layer::MessageServiceResponse;
-use crate::{data_access_layer, AppState};
+use crate::{data_access_layer, utilities, AppState};
 use actix::Addr;
 use actix_web::{web, HttpResponse, Result as actixResult};
 use chrono;
@@ -70,9 +69,10 @@ pub async fn create_message(
                 poster_id: create_message_request.poster_id,
                 creation_datetime: creation_datetime,
             });
-            Ok(HttpResponse::Ok().json(MessageServiceResponse {
-                message: "Message created".to_string(),
-            }))
+            Ok(utilities::responses::response_ok_with_message(
+                None::<()>,
+                "Message created".to_string(),
+            ))
         }
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
@@ -96,7 +96,7 @@ pub async fn get_love_messages(
     }
     let messages_found = data_access_layer::message_dal::get_love_messages(&db, love_id);
     match messages_found {
-        Ok(messages) => Ok(HttpResponse::Ok().json(messages)),
+        Ok(messages) => Ok(utilities::responses::response_ok(Some(messages))),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
@@ -112,7 +112,7 @@ pub async fn get_lover_messages(
     }
     let messages_found = data_access_layer::message_dal::get_lover_messages(&db, user_id);
     match messages_found {
-        Ok(messages) => Ok(HttpResponse::Ok().json(messages)),
+        Ok(messages) => Ok(utilities::responses::response_ok(Some(messages))),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }

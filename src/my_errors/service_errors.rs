@@ -1,11 +1,10 @@
-use std::fmt;
-use std::ops::Add;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
+use std::fmt;
+use std::ops::Add;
 
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::my_errors::ErrorResponse;
-
+use crate::utilities::responses::ApiResponse;
 #[derive(Debug)]
 
 pub enum ServiceError {
@@ -17,7 +16,7 @@ pub enum ServiceError {
     ForbiddenQuery,
     ValueNotAccepted(String, String), // (Value, Reason)
     TransactionError,
-    UnknownServiceError
+    UnknownServiceError,
 }
 impl ServiceError {
     pub fn error_message(&self) -> String {
@@ -28,7 +27,11 @@ impl ServiceError {
             Self::LoginError => "Login error".to_string(),
             Self::JwtError => "Jwt internal error".to_string(),
             Self::ForbiddenQuery => "Query forbidden error".to_string(),
-            Self::ValueNotAccepted(value, reason) => "SQL provided value not accepted, value = ".to_string().add(value).add(" reason : ").add(reason),
+            Self::ValueNotAccepted(value, reason) => "SQL provided value not accepted, value = "
+                .to_string()
+                .add(value)
+                .add(" reason : ")
+                .add(reason),
             Self::TransactionError => "Transaction error".to_string(),
             Self::UnknownServiceError => "Unknown service layer error".to_string(),
         }
@@ -57,11 +60,12 @@ impl actix_web::ResponseError for ServiceError {
 
     fn error_response(&self) -> HttpResponse {
         let status_code = self.status_code();
-        let error_response = ErrorResponse {
+        // detailed_error: self.to_string(), TODO : Log this, dangerous info
+
+        HttpResponse::build(status_code).json(ApiResponse {
+            message: Some(self.error_message()),
             code: status_code.as_u16(),
-            message: self.error_message(),
-            detailed_error: self.to_string(),
-        };
-        HttpResponse::build(status_code).json(error_response)
+            data: None::<()>,
+        })
     }
 }

@@ -7,7 +7,7 @@ use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::service_layer::auth_service::AuthorizationUser;
-use crate::service_layer::MessageServiceResponse;
+use crate::utilities;
 use crate::{data_access_layer, AppState};
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -74,9 +74,10 @@ pub async fn create_user(
                 &db,
                 create_user_request.into_inner(),
             ) {
-                Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
-                    message: "User created".to_string(),
-                })),
+                Ok(()) => Ok(utilities::responses::response_ok_with_message(
+                    None::<()>,
+                    "User created".to_string(),
+                )),
                 Err(err) => Err(ServiceError::SqliteError(err)),
             }
         }
@@ -93,9 +94,9 @@ pub async fn get_user(
     if authorized.id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, user_id);
+    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, 30);
     match user_found {
-        Ok(user) => Ok(HttpResponse::Ok().json(user)),
+        Ok(user) => Ok(utilities::responses::response_ok(Some(user))),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
@@ -110,9 +111,10 @@ pub async fn delete_user(
     }
     let deleted = data_access_layer::user_dal::User::delete_user_by_id(&db, user_id);
     match deleted {
-        Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
-            message: "User deleted successfully".to_string(),
-        })),
+        Ok(()) => Ok(utilities::responses::response_ok_with_message(
+            None::<()>,
+            "User deleted successfully".to_string(),
+        )),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
@@ -145,9 +147,10 @@ pub async fn update_user(
     let update_status =
         data_access_layer::user_dal::User::update_user_infos(&db, update_user_request.into_inner());
     match update_status {
-        Ok(()) => Ok(HttpResponse::Ok().json(MessageServiceResponse {
-            message: "User updated successfully".to_string(),
-        })),
+        Ok(()) => Ok(utilities::responses::response_ok_with_message(
+            None::<()>,
+            "User updated successfully".to_string(),
+        )),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
@@ -182,9 +185,11 @@ pub async fn find_love(
         Ok(user) => Ok(HttpResponse::Ok().json(user)),
         Err(err) => {
             match err {
-                SqliteError::NotFound => Ok(HttpResponse::NotFound().json("Could not find a fitting potential lover")),
+                SqliteError::NotFound => {
+                    Ok(HttpResponse::NotFound().json("Could not find a fitting potential lover"))
+                } // TODO response for this
                 _ => Err(ServiceError::SqliteError(err)),
-            }            
+            }
         }
     }
 }
@@ -218,9 +223,10 @@ pub async fn swipe_user(
                             db.connection
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
-                            Ok(HttpResponse::Ok().json(MessageServiceResponse {
-                                message: "You matched !".to_string(),
-                            }))
+                            Ok(utilities::responses::response_ok_with_message(
+                                None::<()>,
+                                "You matched !".to_string(),
+                            ))
                         }
                         Err(err) => {
                             db.connection
@@ -234,9 +240,10 @@ pub async fn swipe_user(
                     db.connection
                         .execute("END TRANSACTION", [])
                         .map_err(transaction_error)?;
-                    Ok(HttpResponse::Ok().json(MessageServiceResponse {
-                        message: "You love that person !".to_string(),
-                    }))
+                    Ok(utilities::responses::response_ok_with_message(
+                        None::<()>,
+                        "You love that person !".to_string(),
+                    ))
                 }
                 Err(err) => {
                     db.connection

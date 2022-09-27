@@ -1,7 +1,8 @@
+use crate::my_errors::service_errors::ServiceError;
+use crate::utilities::responses::ApiResponse;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use std::{fmt, ops::Add};
-use crate::my_errors::{ErrorResponse, service_errors::ServiceError};
 
 #[derive(Debug)]
 pub enum SqliteError {
@@ -17,7 +18,10 @@ impl SqliteError {
         match self {
             Self::NotFound => "Ressource not found".to_string(),
             Self::SqliteFailureExplained(sqlite_failure_detail, explaination) => {
-                sqlite_failure_detail.to_string().add(" : ").add(explaination)
+                sqlite_failure_detail
+                    .to_string()
+                    .add(" : ")
+                    .add(explaination)
             }
             Self::SqliteFailure(sqlite_failure_detail) => sqlite_failure_detail.to_string(),
             Self::SqliteFailureNoText => {
@@ -46,10 +50,12 @@ impl actix_web::ResponseError for SqliteError {
 
     fn error_response(&self) -> HttpResponse {
         let status_code = self.status_code();
-        let error_response = ErrorResponse {
+        // detailed_error: self.to_string(), TODO : Log this, too dangerous for frontend
+
+        let error_response = ApiResponse {
+            message: Some(self.error_message()),
             code: status_code.as_u16(),
-            message: self.error_message(),
-            detailed_error: self.to_string(),
+            data: None::<()>,
         };
         HttpResponse::build(status_code).json(error_response)
     }

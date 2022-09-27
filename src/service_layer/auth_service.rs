@@ -1,3 +1,4 @@
+use crate::utilities;
 use actix_web::{
     dev, error::ErrorUnauthorized, web, Error, FromRequest, HttpRequest, HttpResponse,
     Result as actixResult,
@@ -41,7 +42,6 @@ struct Claims {
 struct LoginResponse {
     token: String,
     refresh_token: String,
-    message: String,
 }
 
 #[derive(Serialize)]
@@ -53,10 +53,14 @@ pub async fn login(
     db: web::Data<AppState>,
     login_user: web::Json<UserLoginRequest>,
 ) -> actixResult<HttpResponse, ServiceError> {
+    println!("loginnnn {:?}", login_user);
+
     let user_found = data_access_layer::user_dal::User::get_user_password_by_email(
         &db,
         login_user.email.to_string(),
     );
+
+    println!("user found {:?}", user_found);
 
     match user_found {
         Ok((user_id, password)) => {
@@ -94,12 +98,13 @@ pub async fn login(
                         &EncodingKey::from_secret(KEY_JWT_REFRESH),
                     )
                     .expect("failed token creation");
-
-                    Ok(HttpResponse::Ok().json(LoginResponse {
-                        token: token,
-                        refresh_token: refresh_token,
-                        message: "Successfull login".to_string(),
-                    }))
+                    Ok(utilities::responses::response_ok_with_message(
+                        Some(LoginResponse {
+                            token: token,
+                            refresh_token: refresh_token,
+                        }),
+                        "Successfull login".to_string(),
+                    ))
                 }
                 Err(_) => Err(ServiceError::LoginError),
             }
@@ -141,7 +146,9 @@ pub async fn token_refresh(
                 &EncodingKey::from_secret(KEY_JWT),
             )
             .expect("failed token creation");
-            Ok(HttpResponse::Ok().json(RefreshResponse { token: token }))
+            Ok(utilities::responses::response_ok(Some(RefreshResponse {
+                token: token,
+            })))
         }
         Err(e) => match *e.kind() {
             ErrorKind::InvalidToken => {
