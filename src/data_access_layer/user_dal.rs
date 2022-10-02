@@ -333,7 +333,7 @@ impl User {
             .map_err(map_sqlite_error)?;
         let mutual_love_count: usize = statement
             .query_row(params![lover1, lover2, lover2, lover1], |row| {
-                Ok(row.get("count")?)
+                row.get("count")
             })
             .map_err(map_sqlite_error)?;
 
@@ -356,7 +356,7 @@ impl User {
             )
             .map_err(map_sqlite_error)?;
         let swiped_count: usize = statement
-            .query_row(params![user_id, loved], |row| Ok(row.get("count")?))
+            .query_row(params![user_id, loved], |row| row.get("count"))
             .map_err(map_sqlite_error)?;
 
         Ok(swiped_count)
@@ -378,7 +378,7 @@ impl User {
             )
             .map_err(map_sqlite_error)?;
         let swiping_count: usize = statement
-            .query_row(params![user_id, loved], |row| Ok(row.get("count")?))
+            .query_row(params![user_id, loved], |row| row.get("count"))
             .map_err(map_sqlite_error)?;
 
         Ok(swiping_count)

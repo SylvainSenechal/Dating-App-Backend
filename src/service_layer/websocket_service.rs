@@ -121,7 +121,7 @@ impl Handler<Disconnect> for Server {
             .expect("Tried removing a recipient that is not even in sessions");
         for id_room in disconnection.love_rooms {
             if let Some(val) = self.love_chat_rooms.get_mut(&id_room) {
-                val.remove(&recipient_to_remove);
+                val.remove(recipient_to_remove);
             }
         }
         self.sessions.remove(&disconnection.user_id);
@@ -208,7 +208,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
             ws::Message::Text(text) => {
                 println!("Socket received this message : {}", text);
                 let m = text.trim();
-                if m.starts_with("/") {
+                if m.starts_with('/') {
                     let v: Vec<&str> = m.splitn(2, ' ').collect();
                     println!("message : {}", m);
                     println!("v split : {:?}", v);
@@ -239,7 +239,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                             })
                                             .wait(ctx);
                                         let message = json!({
-                                            "message_tyoe": MessageType::Info.as_str().to_string(),
+                                            "message_type": MessageType::Info.as_str().to_string(),
                                             "message": "Authentication successfull"
                                         });
                                         ctx.text(message.to_string())
@@ -247,7 +247,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                     None => {
                                         println!("Wrong command format");
                                         let message = json!({
-                                            "message_tyoe": MessageType::Info.as_str().to_string(),
+                                            "message_type": MessageType::Info.as_str().to_string(),
                                             "message": "Wrong command format"
                                         });
                                         ctx.text(message.to_string())
@@ -256,7 +256,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                             } else {
                                 println!("Could not authenticate on websocket");
                                 let message = json!({
-                                    "message_tyoe": MessageType::Info.as_str().to_string(),
+                                    "message_type": MessageType::Info.as_str().to_string(),
                                     "message": "Could not authenticate on websocket"
                                 });
                                 ctx.text(message.to_string())
@@ -288,7 +288,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                                 } else {
                                                     println!("Could not parse command parameter as room id");
                                                     let message = json!({
-                                                        "message_tyoe": MessageType::Info.as_str().to_string(),
+                                                        "message_type": MessageType::Info.as_str().to_string(),
                                                         "message": "Could not parse command parameter as room id"
                                                     });
                                                     ctx.text(message.to_string())
@@ -296,7 +296,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                             } else {
                                                 println!("Could not authenticate on websocket");
                                                 let message = json!({
-                                                    "message_tyoe": MessageType::Info.as_str().to_string(),
+                                                    "message_type": MessageType::Info.as_str().to_string(),
                                                     "message": "Could not authenticate on websocket"
                                                 });
                                                 ctx.text(message.to_string())
@@ -308,7 +308,7 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                 None => {
                                     println!("Performing a command without being authenticated");
                                     let message = json!({
-                                        "message_tyoe": MessageType::Info.as_str().to_string(),
+                                        "message_type": MessageType::Info.as_str().to_string(),
                                         "message": "Performing a command without being authenticated"
                                     });
                                     ctx.text(message.to_string())

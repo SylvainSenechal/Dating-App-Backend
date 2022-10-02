@@ -111,7 +111,7 @@ pub async fn login(
         }
         Err(_) => {
             // If user doesn't exists, we still hash a constant default hash to dodge timing attacks
-            let rehash = PasswordHash::new(&DEFAULT_HASH).unwrap(); // Turning string into PHC string format type
+            let rehash = PasswordHash::new(DEFAULT_HASH).unwrap(); // Turning string into PHC string format type
             let _ = Argon2::default().verify_password("AYAYA_CUTE_PASSWORD".as_bytes(), &rehash);
             Err(ServiceError::LoginError)
         }
@@ -154,9 +154,9 @@ pub async fn token_refresh(
             ErrorKind::InvalidToken => {
                 // Example on how to handle a specific jwt error
                 println!("Token is invalid");
-                return Err(ServiceError::JwtError);
+                Err(ServiceError::JwtError)
             }
-            _ => return Err(ServiceError::JwtError),
+            _ => Err(ServiceError::JwtError),
         },
     }
 }
@@ -192,7 +192,7 @@ impl FromRequest for AuthorizationUser {
                     ..Validation::default()
                 };
                 let token_data =
-                    decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT), &validation);
+                    decode::<Claims>(token, &DecodingKey::from_secret(KEY_JWT), &validation);
 
                 match token_data {
                     Ok(data) => {
@@ -200,7 +200,7 @@ impl FromRequest for AuthorizationUser {
                         // Anytime a user perform a protected action, we update it's lastseen field to now
                         if let Some(db) = req.app_data::<web::Data<AppState>>() {
                             match data_access_layer::user_dal::User::update_user_last_seen(
-                                &db,
+                                db,
                                 data.claims.sub,
                             ) {
                                 Ok(_) => (),
@@ -213,13 +213,13 @@ impl FromRequest for AuthorizationUser {
                             }
                         }
 
-                        return ok(AuthorizationUser {
+                        ok(AuthorizationUser {
                             id: data.claims.sub,
-                        });
+                        })
                     }
                     Err(e) => {
                         println!("PAS ok auth {}", e);
-                        return err(ErrorUnauthorized("invalid token!"));
+                        err(ErrorUnauthorized("invalid token!"))
                     }
                 }
             }
@@ -235,17 +235,17 @@ pub fn validate_token(token: &str) -> Option<AuthorizationUser> {
     let validation = Validation {
         ..Validation::default()
     };
-    let token_data = decode::<Claims>(&token, &DecodingKey::from_secret(KEY_JWT), &validation);
+    let token_data = decode::<Claims>(token, &DecodingKey::from_secret(KEY_JWT), &validation);
     match token_data {
         Ok(data) => {
             println!("ok validate_token");
-            return Some(AuthorizationUser {
+            Some(AuthorizationUser {
                 id: data.claims.sub,
-            });
+            })
         }
         Err(e) => {
             println!("validate_token not ok : {}", e);
-            return None;
+            None
         }
     }
 }

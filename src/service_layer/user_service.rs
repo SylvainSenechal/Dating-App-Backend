@@ -94,7 +94,7 @@ pub async fn get_user(
     if authorized.id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, 30);
+    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, user_id);
     match user_found {
         Ok(user) => Ok(utilities::responses::response_ok(Some(user))),
         Err(err) => Err(ServiceError::SqliteError(err)),
@@ -182,7 +182,10 @@ pub async fn find_love(
     );
 
     match potential_lover {
-        Ok(user) => Ok(HttpResponse::Ok().json(user)),
+        Ok(user) => Ok(utilities::responses::response_ok_with_message(
+            Some(user),
+            "You found a potential lover !".to_string(),
+        )),
         Err(err) => {
             match err {
                 SqliteError::NotFound => {
@@ -224,7 +227,7 @@ pub async fn swipe_user(
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
                             Ok(utilities::responses::response_ok_with_message(
-                                None::<()>,
+                                Some("You matched !".to_string()),
                                 "You matched !".to_string(),
                             ))
                         }

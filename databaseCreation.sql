@@ -64,3 +64,13 @@ CREATE TABLE IF NOT EXISTS Messages (
     FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(love_id) REFERENCES Lovers(love_id) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS Traces (
+    trace_pk_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    trace_id INTEGER,
+    datetime TEXT,
+    ip TEXT,
+    path TEXT,
+    method TEXT,
+    query_string TEXT,
+    data TEXT
+)

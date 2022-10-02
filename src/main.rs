@@ -1,9 +1,12 @@
 use actix::Actor;
 use actix_cors::Cors;
 use actix_web::http::header;
-use actix_web::{middleware, web, App, HttpResponse, HttpServer};
+use actix_web::{dev::Service, middleware, web, App, HttpResponse, HttpServer};
+use data_access_layer::trace_dal::TraceRequest;
+use futures_util::future::FutureExt;
 use rusqlite::Connection;
 use std::collections::HashMap;
+use std::usize;
 
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 mod constants;
@@ -19,6 +22,7 @@ use constants::constants::DATABASE_NAME;
 // TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
 // TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
 // TODO : GET IP of the request
+// TODO : Gerer OPTIONS request
 #[derive(Debug)]
 pub struct AppState {
     connection: Connection,
@@ -89,10 +93,35 @@ async fn main() -> std::io::Result<()> {
             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
             .allowed_header(header::CONTENT_TYPE)
+            .allowed_header("trace")
             .max_age(3600);
 
         App::new()
             .wrap(cors)
+            .wrap_fn(|req, srv| {
+                if let Some(db) = req.app_data::<web::Data<AppState>>() {
+                    let mut trace = TraceRequest {
+                        trace_id: None::<usize>,
+                        ip: req.peer_addr(),
+                        method: req.method().as_str(),
+                        path: req.path(),
+                        query_string: req.query_string(),
+                        data: None,
+                    };
+                    if let Some(trace_id) = req.headers().get("Trace") {
+                        let trace_id = trace_id
+                            .to_str()
+                            .expect("header to str failed")
+                            .parse::<usize>()
+                            .expect("str to usize failed");
+                        trace.trace_id = Some(trace_id);
+                    }
+                    data_access_layer::trace_dal::create_trace(db, trace)
+                        .expect("dal create trace failed")
+                }
+
+                srv.call(req).map(|res| res)
+            })
             .data(AppState::new())
             .data(server.clone())
             .data(web::JsonConfig::default().error_handler(|err, _req| {
