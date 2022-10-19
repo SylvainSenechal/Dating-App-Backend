@@ -28,6 +28,19 @@ pub async fn create_message(
     if authorized.id != create_message_request.poster_id {
         return Err(ServiceError::ForbiddenQuery);
     }
+    if create_message_request.message.len() == 0 {
+        return Err(ServiceError::ValueNotAccepted(
+            create_message_request.message.to_string(),
+            "Empty messages not accepted".to_string(),
+        ));
+    }
+    if create_message_request.message.chars().count() > 1000 {
+        // Warning : Be carefull when counting string chars(), this needs tests..
+        return Err(ServiceError::ValueNotAccepted(
+            create_message_request.message.to_string(),
+            "Message content string is too long".to_string(),
+        ));
+    }
     match data_access_layer::lover_dal::user_in_love_relation(
         &db,
         create_message_request.poster_id,
@@ -38,13 +51,6 @@ pub async fn create_message(
             SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery),
             _ => return Err(ServiceError::UnknownServiceError),
         },
-    }
-    if create_message_request.message.chars().count() > 1000 {
-        // Warning : Be carefull when counting string chars(), this needs tests..
-        return Err(ServiceError::ValueNotAccepted(
-            create_message_request.message.to_string(),
-            "Message content string is too long".to_string(),
-        ));
     }
 
     let creation_datetime = format!("{:?}", chrono::offset::Utc::now());

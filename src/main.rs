@@ -21,8 +21,10 @@ use constants::constants::DATABASE_NAME;
 // TODO : Show when swiping if the user liked me already
 // TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
 // TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
-// TODO : GET IP of the request
 // TODO : Gerer OPTIONS request
+// TODO : rework routing into one liner
+// TODO : Check sql injections in message, other fields
+// TODO : Lover do not return password
 #[derive(Debug)]
 pub struct AppState {
     connection: Connection,
@@ -123,7 +125,7 @@ async fn main() -> std::io::Result<()> {
                 srv.call(req).map(|res| res)
             })
             .data(AppState::new())
-            .data(server.clone())
+            .data(server.clone()) // are we having differents independent ws server here ?
             .data(web::JsonConfig::default().error_handler(|err, _req| {
                 let e = format!("{:?}", err);
                 println!("conflit");

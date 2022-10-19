@@ -9,6 +9,7 @@ use actix_web::{web, Error, HttpRequest, HttpResponse};
 use actix_web_actors::ws;
 use serde_json::json;
 use std::collections::{HashMap, HashSet};
+use uuid::Uuid;
 
 #[derive(ActixMessage)]
 #[rtype(result = "()")]
@@ -29,7 +30,7 @@ impl MessageType {
 
 #[derive(Debug)]
 pub struct Server {
-    pub sessions: HashMap<usize, Recipient<Message>>, // id user -> socket address
+    pub sessions: HashMap<Uuid, Recipient<Message>>, // uuid user -> socket address
     pub love_chat_rooms: HashMap<usize, HashSet<Recipient<Message>>>,
 }
 
@@ -41,6 +42,7 @@ impl Actor for Server {
 #[rtype(result = "()")]
 pub struct Connect {
     pub user_id: usize,
+    pub uuid: Uuid,
     pub addr: Recipient<Message>,
 }
 
@@ -48,13 +50,14 @@ pub struct Connect {
 #[rtype(result = "()")]
 pub struct Disconnect {
     pub user_id: usize,
+    pub uuid: Uuid,
     pub love_rooms: HashSet<usize>,
 }
 
 impl Server {
     fn send_chat_message(
         &self,
-        love_room: usize,
+        love_room_id: usize,
         poster_id: usize,
         message: &str,
         message_id: usize,
@@ -62,11 +65,11 @@ impl Server {
     ) {
         println!("sending messages");
         println!("lovers r : {:?}", self.love_chat_rooms);
-        if let Some(lovers) = self.love_chat_rooms.get(&love_room) {
+        if let Some(lovers) = self.love_chat_rooms.get(&love_room_id) {
             for lover in lovers {
                 let message = json!({
                     "message_type": MessageType::Chat.as_str().to_string(),
-                    "love_id": love_room,
+                    "love_id": love_room_id,
                     "message": message,
                     "message_id": message_id,
                     "poster_id": poster_id,
@@ -106,8 +109,13 @@ impl Handler<Connect> for Server {
         println!("someone joined : ");
         println!("self        : {:?}", self);
         println!("connection  : {:?}", connection);
-        self.sessions.insert(connection.user_id, connection.addr);
-        println!("SESSIONS : {:?}", self.sessions);
+        // if self.sessions.contains_key(&connection.user_id) {
+        //     println!("User reconnecting from another client. Removing user from old chatrooms :");
+        //     self.sessions.remove(&connection.user_id);
+        // } else {
+        // }
+        self.sessions.insert(connection.uuid, connection.addr);
+        println!("SESSIONS 1 : {:?}", self.sessions);
     }
 }
 
@@ -115,16 +123,21 @@ impl Handler<Disconnect> for Server {
     type Result = ();
 
     fn handle(&mut self, disconnection: Disconnect, _: &mut Context<Self>) {
+        println!("SESSIONS 2 : {:?}", self.sessions);
+        println!("SESSIONS 3 : {:?}", disconnection.user_id);
+
         let recipient_to_remove = self
             .sessions
-            .get(&disconnection.user_id)
-            .expect("Tried removing a recipient that is not even in sessions");
+            .get(&disconnection.uuid)
+            .expect("Tried getting a recipient that is not even in sessions");
         for id_room in disconnection.love_rooms {
             if let Some(val) = self.love_chat_rooms.get_mut(&id_room) {
                 val.remove(recipient_to_remove);
             }
         }
-        self.sessions.remove(&disconnection.user_id);
+        self.sessions.remove(&disconnection.uuid);
+        println!("REMOVED {:?} ", self.love_chat_rooms);
+        println!("SESSIONS 4 : {:?}", self.sessions);
     }
 }
 
@@ -133,6 +146,7 @@ impl Handler<Join> for Server {
 
     // Register new websocket session + assign unique id
     fn handle(&mut self, joining: Join, _: &mut Context<Self>) {
+        println!("joining room {}", joining.id_love_room);
         self.love_chat_rooms
             .entry(joining.id_love_room)
             .or_insert_with(HashSet::new)
@@ -143,6 +157,7 @@ impl Handler<ChatMessage> for Server {
     type Result = ();
 
     fn handle(&mut self, msg: ChatMessage, _: &mut Context<Self>) {
+        println!("yoyoyoyoyo");
         self.send_chat_message(
             msg.id_love_room,
             msg.poster_id,
@@ -159,7 +174,7 @@ impl Handler<ChatMessage> for Server {
 pub struct MyWs {
     db_connection: web::Data<AppState>,
     user_id: Option<usize>,           // None => Websocket not authentified
-    id_love_room: Option<usize>,      // None => Haven't joined any love room
+    uuid: Option<Uuid>,
     ids_joined_rooms: HashSet<usize>, // All the love room of the user <=> All the person you've matched with and can talk with
     addr: Addr<Server>,
 }
@@ -175,6 +190,7 @@ impl Actor for MyWs {
         println!("Websocket connection stopped");
         self.addr.do_send(Disconnect {
             user_id: self.user_id.unwrap(),
+            uuid: self.uuid.unwrap(),
             love_rooms: self.ids_joined_rooms.clone(),
         })
     }
@@ -185,7 +201,7 @@ impl Handler<Message> for MyWs {
     type Result = ();
 
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) {
-        println!("a texxxxxxt");
+        println!("a texxxxxxt {} ", msg.0);
         ctx.text(msg.0)
     }
 }
@@ -222,11 +238,14 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                     Some(authorized) => {
                                         println!("Authentication successfull");
                                         self.user_id = Some(authorized.id);
+                                        self.uuid = Some(Uuid::new_v4());
+
                                         let addr = ctx.address();
                                         // Register the websocket session in the server :
                                         self.addr
                                             .send(Connect {
                                                 user_id: authorized.id,
+                                                uuid: self.uuid.unwrap(),
                                                 addr: addr.recipient(),
                                             })
                                             .into_actor(self)
@@ -238,6 +257,25 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                                 fut::ready(())
                                             })
                                             .wait(ctx);
+
+                                        match data_access_layer::lover_dal::get_lovers(
+                                                &self.db_connection,
+                                                authorized.id,
+                                            ) {
+                                                Ok(lovers) => {
+                                                    for lover in lovers {
+                                                        self.addr.do_send(Join {
+                                                            id_love_room: lover.love_id,
+                                                            addr: ctx.address().recipient(),
+                                                        });
+                                                        self.ids_joined_rooms.insert(lover.love_id);
+                                                    }
+                                                   
+                                                    // self.ids_joined_rooms.insert(room_id);
+                                                },
+                                                    Err(err) => println!("Error when user_id : {} tried finding lovers, error is : {}", authorized.id, err)                                                    
+                                            }
+
                                         let message = json!({
                                             "message_type": MessageType::Info.as_str().to_string(),
                                             "message": "Authentication successfull"
@@ -267,41 +305,6 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
                                 Some(user_id) => {
                                     // The other commands can only be performed when user is authenticated
                                     match other_commands {
-                                        "/join" => {
-                                            if v.len() == 2 {
-                                                println!("joining room : {}", v[1]);
-                                                if let Ok(room_id) = v[1].parse::<usize>() {
-                                                    match data_access_layer::lover_dal::user_in_love_relation(
-                                                        &self.db_connection,
-                                                        user_id,
-                                                        room_id,
-                                                    ) {
-                                                        Ok(_) => { // A sql row was found when querying user_in_love_relation
-                                                            self.addr.do_send(Join {
-                                                                id_love_room: room_id,
-                                                                addr: ctx.address().recipient(),
-                                                            });
-                                                            self.id_love_room = Some(room_id);
-                                                            self.ids_joined_rooms.insert(room_id);
-                                                        },
-                                                        Err(err) => println!("Error when user_id : {} tried joining love_room_id : {}, error is : {}", user_id, room_id, err)                                                    }
-                                                } else {
-                                                    println!("Could not parse command parameter as room id");
-                                                    let message = json!({
-                                                        "message_type": MessageType::Info.as_str().to_string(),
-                                                        "message": "Could not parse command parameter as room id"
-                                                    });
-                                                    ctx.text(message.to_string())
-                                                }
-                                            } else {
-                                                println!("Could not authenticate on websocket");
-                                                let message = json!({
-                                                    "message_type": MessageType::Info.as_str().to_string(),
-                                                    "message": "Could not authenticate on websocket"
-                                                });
-                                                ctx.text(message.to_string())
-                                            }
-                                        }
                                         command => println!("unknown /command : {}", command),
                                     }
                                 }
@@ -333,8 +336,8 @@ pub async fn index_websocket(
         MyWs {
             db_connection: db,
             user_id: None,
-            id_love_room: None,
-            ids_joined_rooms: HashSet::new(), // Todo : fill this with all the relevant love rooms
+            uuid: None, // Using uuid, so one user can connect from different clients, user's 2 clients will be in the same room and will both receive event
+            ids_joined_rooms: HashSet::new(),
             addr: server.get_ref().clone(),
         },
         &req,
