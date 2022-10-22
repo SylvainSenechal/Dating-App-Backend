@@ -4,14 +4,27 @@ use crate::AppState;
 use actix_web::web;
 use chrono;
 use rusqlite::params;
+use serde::{Deserialize, Serialize};
 
 pub struct TraceRequest<'a> {
     pub trace_id: Option<usize>,
     pub ip: Option<std::net::SocketAddr>,
-    pub method: &'a str,
+    pub method: &'a str, // TODO : why no string
     pub path: &'a str,
     pub query_string: &'a str,
     pub data: Option<&'a str>,
+}
+
+#[derive(Serialize)]
+// todo : see optional fields
+pub struct GetTracesResponse {
+    trace_id: Option<usize>,
+    datetime: Option<String>, 
+    // pub ip: Option<std::net::SocketAddr>, TODO : Decide which fields to publicly show
+    method: Option<String>,
+    path: Option<String>,
+    query_string: Option<String>,
+    // data: Option<String>,
 }
 
 pub fn create_trace(db: &web::Data<AppState>, trace: TraceRequest) -> Result<(), SqliteError> {
@@ -32,4 +45,30 @@ pub fn create_trace(db: &web::Data<AppState>, trace: TraceRequest) -> Result<(),
         .map_err(map_sqlite_error)?;
 
     Ok(())
+}
+
+// All for now, later add filters
+pub fn get_traces(db: &web::Data<AppState>) -> Result<Vec<GetTracesResponse>, SqliteError> {
+    let mut statement = db
+        .connection
+        .prepare_cached("SELECT * FROM traces;")
+        .map_err(map_sqlite_error)?;
+    let result_rows = statement
+        .query_map(params![], |row| {
+            Ok(GetTracesResponse {
+                trace_id: row.get("trace_id")?,
+                datetime: row.get("datetime")?,
+                method: row.get("method")?,
+                path: row.get("path")?,
+                query_string: row.get("query_string")?,
+            })
+        })
+        .map_err(map_sqlite_error)?;
+
+    let mut traces = Vec::new();
+    for trace in result_rows {
+        traces.push(trace.map_err(map_sqlite_error)?);
+    }
+
+    Ok(traces)
 }

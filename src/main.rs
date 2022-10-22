@@ -25,6 +25,10 @@ use constants::constants::DATABASE_NAME;
 // TODO : rework routing into one liner
 // TODO : Check sql injections in message, other fields
 // TODO : Lover do not return password
+// TODO : Clean struct into Request/Response/DTO folder
+// TODO : fonctionnalite send developer feedback
+// TODO : red dot sur activite swutcher nb new match
+// TODO : indicateur horizontal derniere connexion dans message
 #[derive(Debug)]
 pub struct AppState {
     connection: Connection,
@@ -162,6 +166,7 @@ async fn main() -> std::io::Result<()> {
                         web::resource("/{swiper_id}/loves/{swiped_id}")
                             .route(web::post().to(service_layer::user_service::swipe_user)),
                     )
+                    // TODO : move to statistics route ?
                     .service(
                         web::resource("/{user_id}/statistics/loved")
                             .route(web::get().to(service_layer::statistics_service::loved_count)),
@@ -186,6 +191,10 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::resource("")
                             .route(web::post().to(service_layer::message_service::create_message)),
+                    )
+                    .service(
+                        web::resource("/tick_messages")
+                            .route(web::put().to(service_layer::message_service::green_tick_messages)),
                     )
                     .service(
                         web::resource("/{love_id}").route(
@@ -215,6 +224,12 @@ async fn main() -> std::io::Result<()> {
                         web::resource("/refresh")
                             .route(web::post().to(service_layer::auth_service::token_refresh)),
                     ),
+            )
+            .service(
+                web::scope("/statistics").service(
+                    web::resource("/traces")
+                        .route(web::get().to(service_layer::statistics_service::backend_activity)),
+                ),
             )
             .default_service(web::to(p404))
     })

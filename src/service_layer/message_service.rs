@@ -3,7 +3,7 @@ use std::ops::Deref;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::service_layer::auth_service::AuthorizationUser;
-use crate::service_layer::websocket_service::{ChatMessage, Server};
+use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
 use crate::{data_access_layer, utilities, AppState};
 use actix::Addr;
 use actix_web::{web, HttpResponse, Result as actixResult};
@@ -14,6 +14,17 @@ use serde::{Deserialize, Serialize};
 pub struct CreateMessageRequest {
     pub message: String,
     pub poster_id: usize,
+    pub love_id: usize,
+}
+
+#[derive(Deserialize)]
+pub struct GreenTickMessagesRequest {
+    pub messages: Vec<GreenTickMessageRequest>,
+}
+
+#[derive(Deserialize)]
+pub struct GreenTickMessageRequest {
+    pub message_id: usize,
     pub love_id: usize,
 }
 
@@ -121,4 +132,38 @@ pub async fn get_lover_messages(
         Ok(messages) => Ok(utilities::responses::response_ok(Some(messages))),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
+}
+
+// Green tick a viewed message
+pub async fn green_tick_messages(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+    green_tick_messages_request: web::Json<GreenTickMessagesRequest>,
+    server: web::Data<Addr<Server>>,
+) -> actixResult<HttpResponse, ServiceError> {
+    // Verify if the message you are green ticking is from a discussion that you "own"
+    // TODO
+    // Green tick the message
+    db.connection
+        .execute("BEGIN TRANSACTION", [])
+        .map_err(transaction_error)?;
+
+    for message in &green_tick_messages_request.messages {
+        match data_access_layer::message_dal::green_tick_message(&db, &message.message_id) {
+            Ok(()) => {
+                server.do_send(GreenTickMessage {
+                    id_love_room: message.love_id,
+                    id_message: message.message_id,
+                });
+            },
+            Err(err) => return Err(ServiceError::SqliteError(err)),
+            // !!!!! TODO : For every transaction, if error, unlock db by ending transaction..
+        }
+    }
+
+    db.connection
+        .execute("END TRANSACTION", [])
+        .map_err(transaction_error)?;
+
+    Ok(utilities::responses::response_ok(None::<()>))
 }

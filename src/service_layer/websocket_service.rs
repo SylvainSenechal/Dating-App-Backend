@@ -16,6 +16,7 @@ use uuid::Uuid;
 pub struct Message(pub String);
 pub enum MessageType {
     Chat,
+    GreenTick,
     Info,
 }
 
@@ -23,6 +24,7 @@ impl MessageType {
     fn as_str(&self) -> &'static str {
         match self {
             MessageType::Chat => "chat",
+            MessageType::GreenTick => "green_tick",
             MessageType::Info => "info",
         }
     }
@@ -82,6 +84,26 @@ impl Server {
             }
         }
     }
+
+    fn send_message_was_green_ticked(
+        &self,
+        love_room_id: usize,
+        message_id: usize,
+    ) {
+        if let Some(lovers) = self.love_chat_rooms.get(&love_room_id) {
+            for lover in lovers {
+                let message = json!({
+                    "message_type": MessageType::GreenTick.as_str().to_string(),
+                    "love_id": love_room_id,
+                    "message_id": message_id
+                });
+                match lover.do_send(Message(message.to_string())) {
+                    Ok(_) => (),
+                    Err(e) => println!("Error while sending green tick message to somebody : {}", e),
+                }
+            }
+        }
+    }
 }
 
 #[derive(ActixMessage, Debug)]
@@ -93,6 +115,14 @@ pub struct ChatMessage {
     pub poster_id: usize,
     pub creation_datetime: String,
 }
+
+#[derive(ActixMessage, Debug)]
+#[rtype(result = "()")]
+pub struct GreenTickMessage {
+    pub id_love_room: usize,
+    pub id_message: usize,
+}
+
 #[derive(ActixMessage, Debug)]
 #[rtype(result = "()")]
 pub struct Join {
@@ -164,6 +194,18 @@ impl Handler<ChatMessage> for Server {
             msg.message.as_str(),
             msg.id_message,
             msg.creation_datetime,
+        );
+    }
+}
+
+impl Handler<GreenTickMessage> for Server {
+    type Result = ();
+
+    fn handle(&mut self, msg: GreenTickMessage, _: &mut Context<Self>) {
+        println!("yoyoyoyoyo");
+        self.send_message_was_green_ticked(
+            msg.id_love_room,
+            msg.id_message,
         );
     }
 }

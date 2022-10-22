@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS Messages (
     message TEXT CHECK(LENGTH(message) <= 1000),
     poster_id INTEGER NOT NULL,
     love_id INTEGER NOT NULL,
+    seen INTEGER CHECK (seen IN (0, 1)) NOT NULL DEFAULT 0,
     creation_datetime TEXT NOT NULL,
     --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
     FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE,

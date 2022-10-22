@@ -13,6 +13,7 @@ pub struct Message {
     pub message: String,
     pub poster_id: usize,
     pub love_id: usize,
+    pub seen: u8,
     pub creation_datetime: String,
 }
 
@@ -23,13 +24,14 @@ pub fn create_message(
 ) -> Result<usize, SqliteError> {
     let mut statement = db
         .connection
-        .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, creation_datetime) VALUES (?, ?, ?, ?)")
+        .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, seen, creation_datetime) VALUES (?, ?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
         .execute(params![
             request.message,
             request.poster_id,
             request.love_id,
+            0, // message is not seen
             creation_datetime
         ])
         .map_err(map_sqlite_error)?;
@@ -55,6 +57,7 @@ pub fn get_love_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                seen: row.get("seen")?,
                 creation_datetime: row.get("creation_datetime")?,
             })
         })
@@ -84,6 +87,7 @@ pub fn get_lover_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                seen: row.get("seen")?,
                 creation_datetime: row.get("creation_datetime")?,
             })
         })
@@ -100,6 +104,7 @@ pub fn get_lover_messages(
                 message: row.get("message")?,
                 poster_id: row.get("poster_id")?,
                 love_id: row.get("love_id")?,
+                seen: row.get("seen")?,
                 creation_datetime: row.get("creation_datetime")?,
             })
         })
@@ -114,4 +119,19 @@ pub fn get_lover_messages(
     }
 
     Ok(messages)
+}
+
+pub fn green_tick_message(
+    db: &web::Data<AppState>,
+    message_id: &usize,
+) -> Result<(), SqliteError> {
+    let mut statement = db
+        .connection
+        .prepare_cached("UPDATE Messages SET seen = ? WHERE message_id = ?")
+        .map_err(map_sqlite_error)?;
+
+    statement
+        .execute(params![1, message_id])
+        .map_err(map_sqlite_error)?;
+    Ok(())
 }

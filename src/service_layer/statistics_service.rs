@@ -68,3 +68,14 @@ pub async fn rejecting_count(
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
+
+pub async fn backend_activity(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+) -> actixResult<HttpResponse, ServiceError> {
+    let traces = data_access_layer::trace_dal::get_traces(&db);
+    match traces {
+        Ok(t) => Ok(utilities::responses::response_ok(Some(t))),
+        Err(err) => Err(ServiceError::SqliteError(err)),
+    }
+}
