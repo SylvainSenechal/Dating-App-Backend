@@ -141,9 +141,9 @@ pub async fn green_tick_messages(
     green_tick_messages_request: web::Json<GreenTickMessagesRequest>,
     server: web::Data<Addr<Server>>,
 ) -> actixResult<HttpResponse, ServiceError> {
-    // Verify if the message you are green ticking is from a discussion that you "own"
     // TODO
-    // Green tick the message
+    // Verify if the message you are green ticking is from a discussion that you "own",
+    // and also that it's not your own message
     db.connection
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;

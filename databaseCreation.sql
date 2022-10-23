@@ -50,6 +50,9 @@ CREATE TABLE IF NOT EXISTS Lovers (
     love_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     lover1 INTEGER NOT NULL,
     lover2 INTEGER NOT NULL,
+    -- When the match just happened, this is to show notificationsgit 
+    seen_by_lover1 INTEGER CHECK (seen_by_lover1 IN (0, 1)) NOT NULL DEFAULT 0,
+    seen_by_lover2 INTEGER CHECK (seen_by_lover2 IN (0, 1)) NOT NULL DEFAULT 0,
     FOREIGN KEY(lover1) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(lover2) REFERENCES Users(user_id) ON DELETE CASCADE,
     UNIQUE (lover1, lover2)
@@ -59,9 +62,10 @@ CREATE TABLE IF NOT EXISTS Messages (
     message TEXT CHECK(LENGTH(message) <= 1000),
     poster_id INTEGER NOT NULL,
     love_id INTEGER NOT NULL,
+    -- if seen, it means the user who didnt post the message saw the message
     seen INTEGER CHECK (seen IN (0, 1)) NOT NULL DEFAULT 0,
-    creation_datetime TEXT NOT NULL,
     --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
+    creation_datetime TEXT NOT NULL,
     FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE,
     FOREIGN KEY(love_id) REFERENCES Lovers(love_id) ON DELETE CASCADE
 );
@@ -74,4 +78,10 @@ CREATE TABLE IF NOT EXISTS Traces (
     method TEXT,
     query_string TEXT,
     data TEXT
-)
+) -- CREATE TABLE IF NOT EXISTS Feedbacks (
+--     feedback_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+--     poster_id INTEGER NOT NULL,
+--     feedback_message TEXT NOT NULL,
+--     creation_datetime TEXT NOT NULL,
+--     FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE, -- On delete cascade not sure
+-- )

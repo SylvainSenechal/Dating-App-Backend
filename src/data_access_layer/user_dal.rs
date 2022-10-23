@@ -26,7 +26,7 @@ pub struct User {
     pub description: String,
 }
 
-impl User {
+impl User { // TODO no need for this anymore..
     pub fn create_user(
         db: &web::Data<AppState>,
         user: CreateUserRequest,

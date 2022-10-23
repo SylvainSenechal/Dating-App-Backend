@@ -29,6 +29,8 @@ use constants::constants::DATABASE_NAME;
 // TODO : fonctionnalite send developer feedback
 // TODO : red dot sur activite swutcher nb new match
 // TODO : indicateur horizontal derniere connexion dans message
+// TODO : Get user info a revoir, selon que ce soit moi ou un autre
+// TODO : Local cache
 #[derive(Debug)]
 pub struct AppState {
     connection: Connection,
@@ -214,6 +216,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::resource("/lovers/{user_id}")
                     .route(web::get().to(service_layer::lover_service::get_lovers)),
+            )
+            .service(
+                web::resource("/lovers/{love_id}/tick_love")
+                    .route(web::put().to(service_layer::lover_service::tick_love)),
             )
             .service(
                 web::scope("/auth")

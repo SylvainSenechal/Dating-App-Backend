@@ -26,3 +26,17 @@ pub async fn get_lovers(
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
+
+
+pub async fn tick_love(
+    authorized: AuthorizationUser,
+    db: web::Data<AppState>,
+    web::Path(love_id): web::Path<usize>,
+) -> actixResult<HttpResponse, ServiceError> {
+    // TODO : verify that authorized.id is in the love_id relation
+
+    match data_access_layer::lover_dal::tick_love(&db, love_id, authorized.id) {
+        Ok(()) => Ok(utilities::responses::response_ok(None::<()>)),
+        Err(err) => Err(ServiceError::SqliteError(err))
+    }
+}

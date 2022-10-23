@@ -8,8 +8,12 @@ use crate::AppState;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lover {
-    // same as user but with a love_id
+    // same as user but with a love_id, and seen_by_lover1/2
     pub love_id: usize,
+    pub lover1: usize,
+    pub lover2: usize,
+    pub seen_by_lover1: u8, // bool actually
+    pub seen_by_lover2: u8, // bool actually
     pub id: usize,
     pub name: String,
     pub password: String,
@@ -107,6 +111,10 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
         .query_map(params![user_id], |row| {
             Ok(Lover {
                 love_id: row.get("love_id")?,
+                lover1: row.get("lover1")?,
+                lover2: row.get("lover2")?,
+                seen_by_lover1: row.get("seen_by_lover1")?,
+                seen_by_lover2: row.get("seen_by_lover2")?,
                 id: row.get("user_id")?,
                 name: row.get("name")?,
                 password: row.get("password")?,
@@ -136,6 +144,10 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
         .query_map(params![user_id], |row| {
             Ok(Lover {
                 love_id: row.get("love_id")?,
+                lover1: row.get("lover1")?,
+                lover2: row.get("lover2")?,
+                seen_by_lover1: row.get("seen_by_lover1")?,
+                seen_by_lover2: row.get("seen_by_lover2")?,
                 id: row.get("user_id")?,
                 name: row.get("name")?,
                 password: row.get("password")?,
@@ -163,3 +175,30 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
 
     Ok(persons)
 }
+
+pub fn tick_love(db: &web::Data<AppState>, love_id: usize, lover_id: usize) -> Result<(), SqliteError> {
+    let mut statement = db
+        .connection
+        .prepare_cached(
+            "
+            UPDATE Lovers
+            SET 
+                seen_by_lover1 = CASE WHEN lover1 = ? THEN 1 ELSE 0 END,
+                seen_by_lover2 = CASE WHEN lover2 = ? THEN 1 ELSE 0 END
+            WHERE love_id = ?
+        ",
+        )
+        .map_err(map_sqlite_error)?;
+    statement
+        .execute(params![lover_id, lover_id, love_id])
+        .map_err(map_sqlite_error)?;
+
+    Ok(())
+}
+
+
+// UPDATE Lovers
+// SET 
+//     seen_by_lover1 = CASE WHEM lover1 = 2 THEN 1 ELSE 0 END,
+//     seen_by_lover2 = CASE WHEM lover2 = 2 THEN 1 ELSE 0 END
+// WHERE love_id = 1
