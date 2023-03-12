@@ -6,6 +6,7 @@ use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::AppState;
 
+// todo : do not return pricate infos
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lover {
     // same as user but with a love_id, and seen_by_lover1/2
@@ -15,6 +16,7 @@ pub struct Lover {
     pub seen_by_lover1: u8, // bool actually
     pub seen_by_lover2: u8, // bool actually
     pub id: usize,
+    pub last_seen: String,
     pub name: String,
     pub password: String,
     pub email: String,
@@ -117,6 +119,7 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
                 seen_by_lover2: row.get("seen_by_lover2")?,
                 id: row.get("user_id")?,
                 name: row.get("name")?,
+                last_seen: row.get("last_seen")?,
                 password: row.get("password")?,
                 email: row.get("email")?,
                 age: row.get("age")?,
@@ -150,6 +153,7 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
                 seen_by_lover2: row.get("seen_by_lover2")?,
                 id: row.get("user_id")?,
                 name: row.get("name")?,
+                last_seen: row.get("last_seen")?,
                 password: row.get("password")?,
                 email: row.get("email")?,
                 age: row.get("age")?,
@@ -195,10 +199,3 @@ pub fn tick_love(db: &web::Data<AppState>, love_id: usize, lover_id: usize) -> R
 
     Ok(())
 }
-
-
-// UPDATE Lovers
-// SET 
-//     seen_by_lover1 = CASE WHEM lover1 = 2 THEN 1 ELSE 0 END,
-//     seen_by_lover2 = CASE WHEM lover2 = 2 THEN 1 ELSE 0 END
-// WHERE love_id = 1

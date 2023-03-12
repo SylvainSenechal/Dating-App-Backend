@@ -85,7 +85,7 @@ async fn main() -> std::io::Result<()> {
         "RUST_LOG",
         "actix_web=debug,actix_server=info,actix_web=info",
     );
-    env_logger::init();
+    // env_logger::init();
 
     let server = service_layer::websocket_service::Server {
         sessions: HashMap::new(),
