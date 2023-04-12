@@ -1,4 +1,3 @@
-use actix_web::web;
 use chrono;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -7,6 +6,7 @@ use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::user_service::{CreateUserRequest, UpdateUserInfosReq};
 use crate::AppState;
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
@@ -26,13 +26,11 @@ pub struct User {
     pub description: String,
 }
 
-impl User { // TODO no need for this anymore..
-    pub fn create_user(
-        db: &web::Data<AppState>,
-        user: CreateUserRequest,
-    ) -> Result<(), SqliteError> {
-        let mut statement = db
-            .connection
+impl User {
+    // TODO no need for this impl anymore ?
+    pub fn create_user(db: &Arc<AppState>, user: CreateUserRequest) -> Result<(), SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("INSERT INTO Users (name, password, email, last_seen, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
@@ -52,9 +50,9 @@ impl User { // TODO no need for this anymore..
         Ok(())
     }
 
-    pub fn get_user_by_email(db: &web::Data<AppState>, email: String) -> Result<User, SqliteError> {
-        let mut statement = db
-            .connection
+    pub fn get_user_by_email(db: &Arc<AppState>, email: String) -> Result<User, SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("SELECT * FROM Users WHERE email = ?")
             .map_err(map_sqlite_error)?;
 
@@ -82,11 +80,11 @@ impl User { // TODO no need for this anymore..
 
     // This route is for internal use as the password returned is the real Argon-hashed one
     pub fn get_user_password_by_email(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         email: String,
     ) -> Result<(usize, String), SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("SELECT * FROM Users WHERE email = ?")
             .map_err(map_sqlite_error)?;
 
@@ -97,9 +95,9 @@ impl User { // TODO no need for this anymore..
             .map_err(map_sqlite_error)
     }
 
-    pub fn get_user_by_id(db: &web::Data<AppState>, user_id: usize) -> Result<User, SqliteError> {
-        let mut statement = db
-            .connection
+    pub fn get_user_by_id(db: &Arc<AppState>, user_id: usize) -> Result<User, SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("SELECT * FROM Users WHERE user_id = ?")
             .map_err(map_sqlite_error)?;
 
@@ -125,9 +123,9 @@ impl User { // TODO no need for this anymore..
             .map_err(map_sqlite_error)
     }
 
-    pub fn delete_user_by_id(db: &web::Data<AppState>, user_id: usize) -> Result<(), SqliteError> {
-        let mut statement = db
-            .connection
+    pub fn delete_user_by_id(db: &Arc<AppState>, user_id: usize) -> Result<(), SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("DELETE FROM Users WHERE user_id = ?")
             .map_err(map_sqlite_error)?;
 
@@ -139,12 +137,12 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn update_user_infos(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         user: UpdateUserInfosReq,
     ) -> Result<(), SqliteError> {
         println!("{:?}", user);
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "UPDATE Users
                 SET name = ?,
@@ -184,12 +182,9 @@ impl User { // TODO no need for this anymore..
         Ok(())
     }
 
-    pub fn update_user_last_seen(
-        db: &web::Data<AppState>,
-        user_id: usize,
-    ) -> Result<(), SqliteError> {
-        let mut statement = db
-            .connection
+    pub fn update_user_last_seen(db: &Arc<AppState>, user_id: usize) -> Result<(), SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "UPDATE Users
                 SET last_seen = ?
@@ -207,9 +202,9 @@ impl User { // TODO no need for this anymore..
         Ok(())
     }
 
-    pub fn get_users(db: &web::Data<AppState>) -> Result<Vec<User>, SqliteError> {
-        let mut statement = db
-            .connection
+    pub fn get_users(db: &Arc<AppState>) -> Result<Vec<User>, SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("SELECT * FROM Users")
             .map_err(map_sqlite_error)?;
         let result_rows = statement
@@ -242,7 +237,7 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn find_love_target(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         user_id: usize,
         looking_for: String,
         gender: String,
@@ -252,8 +247,8 @@ impl User { // TODO no need for this anymore..
         age_min: u8,
         age_max: u8,
     ) -> Result<User, SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "
                 SELECT *
@@ -300,13 +295,13 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn swipe_user(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         swiper: usize,
         swiped: usize,
         love: u8, // 0 : swiper dont like swiped, 1 : swiper like swiped
     ) -> Result<(), SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached("INSERT INTO MatchingResults (swiper, swiped, love) VALUES (?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
@@ -317,12 +312,12 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn check_mutual_love(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         lover1: usize,
         lover2: usize,
     ) -> Result<usize, SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "
             SELECT COUNT(*) as count 
@@ -341,12 +336,12 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn swiped_count(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         user_id: usize,
         loved: u8,
     ) -> Result<usize, SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "
             SELECT COUNT(*) as count 
@@ -363,12 +358,12 @@ impl User { // TODO no need for this anymore..
     }
 
     pub fn swiping_count(
-        db: &web::Data<AppState>,
+        db: &Arc<AppState>,
         user_id: usize,
         loved: u8,
     ) -> Result<usize, SqliteError> {
-        let mut statement = db
-            .connection
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
             .prepare_cached(
                 "
             SELECT COUNT(*) as count

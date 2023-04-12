@@ -1,7 +1,8 @@
-use actix_web::HttpResponse;
+use axum::{http::StatusCode, Json};
 use serde::Serialize;
 
-use actix_web::http::StatusCode;
+use crate::my_errors::service_errors::ServiceError;
+use crate::service_layer::auth_service::AuthError;
 
 #[derive(Serialize)]
 pub struct ApiResponse<T: Serialize> {
@@ -12,18 +13,65 @@ pub struct ApiResponse<T: Serialize> {
 
 // "User found".to_string() TODO : MESSAGE IN CONST
 
-pub fn response_ok<T: Serialize>(data: Option<T>) -> HttpResponse {
-    HttpResponse::Ok().json(ApiResponse {
-        message: None,
-        code: StatusCode::OK.as_u16(),
-        data: data,
-    })
+// Error type : Generic that implements intoResponse ?
+pub fn response_ok<T: Serialize>(
+    data: Option<T>,
+) -> Result<(StatusCode, Json<ApiResponse<T>>), ServiceError> {
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse {
+            message: None,
+            code: StatusCode::OK.as_u16(),
+            data: data,
+        }),
+    ))
 }
 
-pub fn response_ok_with_message<T: Serialize>(data: Option<T>, message: String) -> HttpResponse {
-    HttpResponse::Ok().json(ApiResponse {
-        message: Some(message),
-        code: StatusCode::OK.as_u16(),
-        data: data,
-    })
+pub fn response_ok_with_message<T: Serialize>(
+    data: Option<T>,
+    message: String,
+) -> Result<(StatusCode, Json<ApiResponse<T>>), ServiceError> {
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse {
+            message: Some(message),
+            code: StatusCode::OK.as_u16(),
+            data: data,
+        }),
+    ))
 }
+
+pub fn response_auth_ok<T: Serialize>(
+    data: Option<T>,
+) -> Result<(StatusCode, Json<ApiResponse<T>>), AuthError> {
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse {
+            message: None,
+            code: StatusCode::OK.as_u16(),
+            data: data,
+        }),
+    ))
+}
+
+pub fn response_ok_auth_with_message<T: Serialize>(
+    data: Option<T>,
+    message: String,
+) -> Result<(StatusCode, Json<ApiResponse<T>>), AuthError> {
+    Ok((
+        StatusCode::OK,
+        Json(ApiResponse {
+            message: Some(message),
+            code: StatusCode::OK.as_u16(),
+            data: data,
+        }),
+    ))
+}
+
+// pub fn response_ok_with_message<T: Serialize>(data: Option<T>, message: String) -> (StatusCode, Json<ApiResponse<T>>) {
+//     (StatusCode::OK, Json(ApiResponse {
+//         message: Some(message),
+//         code: StatusCode::OK.as_u16(),
+//         data: data,
+//     }))
+// }

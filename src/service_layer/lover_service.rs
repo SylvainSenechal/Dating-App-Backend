@@ -1,42 +1,50 @@
-use actix_web::{web, HttpResponse, Result as actixResult};
-
+use crate::data_access_layer::lover_dal::Lover; // todo : refactor into dto/dal logic
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::transaction_error;
-use crate::service_layer::auth_service::AuthorizationUser;
-use crate::utilities;
+use crate::service_layer::auth_service::JwtClaims;
+use crate::utilities::responses::{response_ok, ApiResponse};
 use crate::{data_access_layer, AppState};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
+use std::sync::Arc;
 
 pub async fn get_lovers(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<Vec<Lover>>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
-    let lovers_found = data_access_layer::lover_dal::get_lovers(&db, user_id);
-    db.connection
+    let lovers_found = data_access_layer::lover_dal::get_lovers(&state, user_id);
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("END TRANSACTION", [])
         .map_err(transaction_error)?;
     match lovers_found {
-        Ok(lovers) => Ok(utilities::responses::response_ok(Some(lovers))),
+        Ok(lovers) => response_ok(Some(lovers)),
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
 }
 
-
 pub async fn tick_love(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(love_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(love_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     // TODO : verify that authorized.id is in the love_id relation
 
-    match data_access_layer::lover_dal::tick_love(&db, love_id, authorized.id) {
-        Ok(()) => Ok(utilities::responses::response_ok(None::<()>)),
-        Err(err) => Err(ServiceError::SqliteError(err))
-    }
+    data_access_layer::lover_dal::tick_love(&state, love_id, jwt_claims.user_id)?;
+    response_ok(None::<()>)
 }

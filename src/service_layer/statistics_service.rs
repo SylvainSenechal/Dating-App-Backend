@@ -1,81 +1,78 @@
-use actix_web::{web, HttpResponse, Result as actixResult};
-
-use crate::my_errors::service_errors::ServiceError;
-use crate::service_layer::auth_service::AuthorizationUser;
-use crate::utilities;
+use crate::service_layer::auth_service::JwtClaims;
+use crate::utilities::responses::{response_ok, ApiResponse};
 use crate::{data_access_layer, AppState};
+use crate::{
+    data_access_layer::trace_dal::GetTracesResponse, my_errors::service_errors::ServiceError,
+};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
+use std::sync::Arc;
+
+// TODO struct count json ?
 
 pub async fn loved_count(
     // How many users loved you
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count = data_access_layer::user_dal::User::swiped_count(&db, authorized.id, 1);
-    match swiped_count {
-        Ok(count) => Ok(utilities::responses::response_ok(Some(count))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let swiped_count =
+        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_id, 1)?;
+    response_ok(Some(swiped_count))
 }
 
 pub async fn rejected_count(
     // How many users rejected you
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count = data_access_layer::user_dal::User::swiped_count(&db, authorized.id, 0);
-    match swiped_count {
-        Ok(count) => Ok(utilities::responses::response_ok(Some(count))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let swiped_count =
+        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_id, 0)?;
+    response_ok(Some(swiped_count))
 }
 
 pub async fn loving_count(
     // How many users you loved
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count = data_access_layer::user_dal::User::swiping_count(&db, authorized.id, 1);
-    match swiped_count {
-        Ok(count) => Ok(utilities::responses::response_ok(Some(count))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let swiped_count =
+        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_id, 1)?;
+    response_ok(Some(swiped_count))
 }
 
 pub async fn rejecting_count(
     // How many users you rejected
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count = data_access_layer::user_dal::User::swiping_count(&db, authorized.id, 0);
-    match swiped_count {
-        Ok(count) => Ok(utilities::responses::response_ok(Some(count))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let swiped_count =
+        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_id, 0)?;
+    response_ok(Some(swiped_count))
 }
 
 pub async fn backend_activity(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-) -> actixResult<HttpResponse, ServiceError> {
-    let traces = data_access_layer::trace_dal::get_traces(&db);
-    match traces {
-        Ok(t) => Ok(utilities::responses::response_ok(Some(t))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+) -> Result<(StatusCode, Json<ApiResponse<Vec<GetTracesResponse>>>), ServiceError> {
+    let traces = data_access_layer::trace_dal::get_traces(&state)?;
+    response_ok(Some(traces))
 }

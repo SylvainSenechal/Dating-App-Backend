@@ -1,14 +1,18 @@
-use std::ops::Deref;
-
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
-use crate::service_layer::auth_service::AuthorizationUser;
-use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
-use crate::{data_access_layer, utilities, AppState};
-use actix::Addr;
-use actix_web::{web, HttpResponse, Result as actixResult};
+use crate::service_layer::auth_service::JwtClaims;
+// use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
+use crate::data_access_layer::message_dal::Message;
+use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
+use crate::{data_access_layer, AppState};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use chrono;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateMessageRequest {
@@ -30,66 +34,69 @@ pub struct GreenTickMessageRequest {
 
 // Post a message by poster_id in the love_id relation
 pub async fn create_message(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    create_message_request: web::Json<CreateMessageRequest>,
-    server: web::Data<Addr<Server>>,
-) -> actixResult<HttpResponse, ServiceError> {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Json(create_message_request): Json<CreateMessageRequest>,
+    // server: web::Data<Addr<Server>>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_message_request);
-    if authorized.id != create_message_request.poster_id {
+    if jwt_claims.user_id != create_message_request.poster_id {
         return Err(ServiceError::ForbiddenQuery);
     }
     if create_message_request.message.len() == 0 {
-        return Err(ServiceError::ValueNotAccepted(
+        return Err(ServiceError::SqlValueNotAccepted(
             create_message_request.message.to_string(),
             "Empty messages not accepted".to_string(),
         ));
     }
     if create_message_request.message.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
-        return Err(ServiceError::ValueNotAccepted(
+        return Err(ServiceError::SqlValueNotAccepted(
             create_message_request.message.to_string(),
             "Message content string is too long".to_string(),
         ));
     }
     match data_access_layer::lover_dal::user_in_love_relation(
-        &db,
+        &state,
         create_message_request.poster_id,
         create_message_request.love_id,
     ) {
         Ok(_) => (),
         Err(err) => match err {
-            SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery),
+            SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery), // user have not matched, cannot send message
             _ => return Err(ServiceError::UnknownServiceError),
         },
     }
 
     let creation_datetime = format!("{:?}", chrono::offset::Utc::now());
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
     let result_creation_message = data_access_layer::message_dal::create_message(
-        &db,
-        create_message_request.deref(),
+        &state,
+        &create_message_request,
         &creation_datetime,
     );
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("END TRANSACTION", [])
         .map_err(transaction_error)?;
     match result_creation_message {
         Ok(id_message) => {
             println!("message {} created", id_message);
-            server.do_send(ChatMessage {
-                id_love_room: create_message_request.love_id,
-                id_message: id_message,
-                message: create_message_request.message.to_string(),
-                poster_id: create_message_request.poster_id,
-                creation_datetime: creation_datetime,
-            });
-            Ok(utilities::responses::response_ok_with_message(
-                None::<()>,
-                "Message created".to_string(),
-            ))
+            // server.do_send(ChatMessage {
+            //     id_love_room: create_message_request.love_id,
+            //     id_message: id_message,
+            //     message: create_message_request.message.to_string(),
+            //     poster_id: create_message_request.poster_id,
+            //     creation_datetime: creation_datetime,
+            // });
+            response_ok_with_message(None::<()>, "message created".to_string())
         }
         Err(err) => Err(ServiceError::SqliteError(err)),
     }
@@ -97,73 +104,73 @@ pub async fn create_message(
 
 // Get messages of one "love_id" love relations
 pub async fn get_love_messages(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(love_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    match data_access_layer::lover_dal::user_in_love_relation(&db, authorized.id, love_id) {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(love_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<Vec<Message>>>), ServiceError> {
+    match data_access_layer::lover_dal::user_in_love_relation(&state, jwt_claims.user_id, love_id) {
         Ok(_) => println!(
             "{} user allowed to get messages of {} love relationship",
-            authorized.id, love_id
+            jwt_claims.user_id, love_id
         ),
         Err(err) => match err {
             SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery),
             _ => return Err(ServiceError::UnknownServiceError),
         },
     }
-    let messages_found = data_access_layer::message_dal::get_love_messages(&db, love_id);
-    match messages_found {
-        Ok(messages) => Ok(utilities::responses::response_ok(Some(messages))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let messages_found = data_access_layer::message_dal::get_love_messages(&state, love_id)?;
+    response_ok(Some(messages_found))
 }
 
 // Get all the messages of all the love relation of "user_id"
 pub async fn get_lover_messages(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<Vec<Message>>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let messages_found = data_access_layer::message_dal::get_lover_messages(&db, user_id);
-    match messages_found {
-        Ok(messages) => Ok(utilities::responses::response_ok(Some(messages))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let messages_found = data_access_layer::message_dal::get_lover_messages(&state, user_id)?;
+    response_ok(Some(messages_found))
 }
 
 // Green tick a viewed message
 pub async fn green_tick_messages(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    green_tick_messages_request: web::Json<GreenTickMessagesRequest>,
-    server: web::Data<Addr<Server>>,
-) -> actixResult<HttpResponse, ServiceError> {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Json(green_tick_messages_request): Json<GreenTickMessagesRequest>,
+    // server: web::Data<Addr<Server>>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     // TODO
     // Verify if the message you are green ticking is from a discussion that you "own",
     // and also that it's not your own message
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
 
     for message in &green_tick_messages_request.messages {
-        match data_access_layer::message_dal::green_tick_message(&db, &message.message_id) {
+        match data_access_layer::message_dal::green_tick_message(&state, &message.message_id) {
             Ok(()) => {
-                server.do_send(GreenTickMessage {
-                    id_love_room: message.love_id,
-                    id_message: message.message_id,
-                });
-            },
+                // server.do_send(GreenTickMessage {
+                //     id_love_room: message.love_id,
+                //     id_message: message.message_id,
+                // });
+            }
             Err(err) => return Err(ServiceError::SqliteError(err)),
             // !!!!! TODO : For every transaction, if error, unlock db by ending transaction..
         }
     }
 
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("END TRANSACTION", [])
         .map_err(transaction_error)?;
 
-    Ok(utilities::responses::response_ok(None::<()>))
+    response_ok(None::<()>)
 }

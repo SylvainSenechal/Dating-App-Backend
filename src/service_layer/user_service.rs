@@ -1,14 +1,20 @@
-use actix_web::{web, HttpResponse, Result as actixResult};
 use argon2::{password_hash::SaltString, Algorithm, Argon2, Params, PasswordHasher, Version};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
+use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
-use crate::service_layer::auth_service::AuthorizationUser;
-use crate::utilities;
-use crate::{data_access_layer, AppState};
+use crate::service_layer::auth_service::JwtClaims;
+use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
+use crate::{data_access_layer, AppState}; // todo : refactor into dto/dal logic
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateUserRequest {
@@ -18,13 +24,12 @@ pub struct CreateUserRequest {
     pub age: u8,
     pub latitude: f32,
     pub longitude: f32,
-    pub gender: String,
+    pub gender: String, // TODO add enum constraint
     pub looking_for: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct SwipeUserRequest {
-    pub swiper: usize,
     pub swiped: usize,
     pub love: u8, // boolean for sqlite, 0 = dont love, 1 - love
 }
@@ -47,12 +52,12 @@ pub struct UpdateUserInfosReq {
 }
 
 pub async fn create_user(
-    db: web::Data<AppState>,
-    mut create_user_request: web::Json<CreateUserRequest>,
-) -> actixResult<HttpResponse, ServiceError> {
+    State(state): State<Arc<AppState>>,
+    Json(mut create_user_request): Json<CreateUserRequest>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_user_request);
     let user = data_access_layer::user_dal::User::get_user_by_email(
-        &db,
+        &state,
         create_user_request.email.to_string(),
     );
     let hasher: Argon2 = Argon2::new(
@@ -70,16 +75,8 @@ pub async fn create_user(
     match user {
         Err(SqliteError::NotFound) => {
             create_user_request.password = phc_string;
-            match data_access_layer::user_dal::User::create_user(
-                &db,
-                create_user_request.into_inner(),
-            ) {
-                Ok(()) => Ok(utilities::responses::response_ok_with_message(
-                    None::<()>,
-                    "User created".to_string(),
-                )),
-                Err(err) => Err(ServiceError::SqliteError(err)),
-            }
+            data_access_layer::user_dal::User::create_user(&state, create_user_request)?;
+            response_ok_with_message(None::<()>, "user created".to_string())
         }
         Ok(_) => Err(ServiceError::UserAlreadyExist),
         Err(err) => Err(ServiceError::SqliteError(err)),
@@ -87,36 +84,27 @@ pub async fn create_user(
 }
 
 pub async fn get_user(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::User::get_user_by_id(&db, user_id);
-    match user_found {
-        Ok(user) => Ok(utilities::responses::response_ok(Some(user))),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    let user_found = data_access_layer::user_dal::User::get_user_by_id(&state, user_id)?;
+    response_ok(Some(user_found))
 }
 
 pub async fn delete_user(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let deleted = data_access_layer::user_dal::User::delete_user_by_id(&db, user_id);
-    match deleted {
-        Ok(()) => Ok(utilities::responses::response_ok_with_message(
-            None::<()>,
-            "User deleted successfully".to_string(),
-        )),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    data_access_layer::user_dal::User::delete_user_by_id(&state, user_id)?;
+    response_ok_with_message(None::<()>, "user deleted successfully".to_string())
 }
 
 // This route is useless and dangerous..
@@ -129,49 +117,41 @@ pub async fn delete_user(
 // }
 
 pub async fn update_user(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-    update_user_request: web::Json<UpdateUserInfosReq>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_id): Path<usize>,
+    Json(update_user_request): Json<UpdateUserInfosReq>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
+    if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
     if update_user_request.description.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
-        return Err(ServiceError::ValueNotAccepted(
+        return Err(ServiceError::SqlValueNotAccepted(
             update_user_request.description.to_string(),
             "Description string is too long".to_string(),
         ));
     }
-    let update_status =
-        data_access_layer::user_dal::User::update_user_infos(&db, update_user_request.into_inner());
-    match update_status {
-        Ok(()) => Ok(utilities::responses::response_ok_with_message(
-            None::<()>,
-            "User updated successfully".to_string(),
-        )),
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    // let update_status =
+    //     data_access_layer::user_dal::User::update_user_infos(&state, update_user_request);
+    // let update_status = data_access_layer::user_dal::User::update_user_infos(&state, update_user_request)?;
+    data_access_layer::user_dal::User::update_user_infos(&state, update_user_request)?;
+    response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
 
 pub async fn find_love(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path(user_id): web::Path<usize>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != user_id {
-        return Err(ServiceError::ForbiddenQuery);
-    }
-    let user = data_access_layer::user_dal::User::get_user_by_id(&db, authorized.id);
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
+    let user = data_access_layer::user_dal::User::get_user_by_id(&state, jwt_claims.user_id);
     let user = match user {
         Ok(user) => user,
         Err(err) => return Err(ServiceError::SqliteError(err)),
     };
 
     let potential_lover = data_access_layer::user_dal::User::find_love_target(
-        &db,
-        user_id,
+        &state,
+        jwt_claims.user_id,
         user.looking_for,
         user.gender,
         user.search_radius,
@@ -182,15 +162,12 @@ pub async fn find_love(
     );
 
     match potential_lover {
-        Ok(user) => Ok(utilities::responses::response_ok_with_message(
-            Some(user),
-            "You found a potential lover !".to_string(),
-        )),
+        Ok(user) => {
+            response_ok_with_message(Some(user), "you found a potential lover !".to_string())
+        }
         Err(err) => {
             match err {
-                SqliteError::NotFound => {
-                    Ok(HttpResponse::NotFound().json("Could not find a fitting potential lover"))
-                } // TODO response for this
+                SqliteError::NotFound => Err(ServiceError::NoPotentialMatchFound), // TODO response for this
                 _ => Err(ServiceError::SqliteError(err)),
             }
         }
@@ -199,40 +176,50 @@ pub async fn find_love(
 
 // Todo : swiper should only be able to swipe a user given by the backend (here you can set swiped_id to be anybody, inclduing yourself..)
 pub async fn swipe_user(
-    authorized: AuthorizationUser,
-    db: web::Data<AppState>,
-    web::Path((swiper_id, swiped_id)): web::Path<(usize, usize)>,
-    swipe_user_request: web::Json<SwipeUserRequest>,
-) -> actixResult<HttpResponse, ServiceError> {
-    if authorized.id != swiper_id {
-        return Err(ServiceError::ForbiddenQuery);
-    }
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Json(swipe_user_request): Json<SwipeUserRequest>,
+) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", swipe_user_request);
 
-    db.connection
+    state
+        .connection
+        .get()
+        .unwrap()
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
     match data_access_layer::user_dal::User::swipe_user(
-        &db,
-        swipe_user_request.swiper,
+        &state,
+        jwt_claims.user_id,
         swipe_user_request.swiped,
         swipe_user_request.love,
     ) {
         Ok(()) => {
-            match data_access_layer::user_dal::User::check_mutual_love(&db, swiper_id, swiped_id) {
+            match data_access_layer::user_dal::User::check_mutual_love(
+                &state,
+                jwt_claims.user_id,
+                swipe_user_request.swiped,
+            ) {
                 Ok(2) => {
-                    match data_access_layer::lover_dal::create_lovers(&db, swiper_id, swiped_id) {
+                    match data_access_layer::lover_dal::create_lovers(
+                        &state,
+                        jwt_claims.user_id,
+                        swipe_user_request.swiped,
+                    ) {
                         Ok(_) => {
-                            db.connection
+                            state
+                                .connection
+                                .get()
+                                .unwrap()
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
-                            Ok(utilities::responses::response_ok_with_message(
-                                Some("You matched !".to_string()),
-                                "You matched !".to_string(),
-                            ))
+                            response_ok_with_message(None::<()>, "you matched !".to_string())
                         }
                         Err(err) => {
-                            db.connection
+                            state
+                                .connection
+                                .get()
+                                .unwrap()
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
                             Err(ServiceError::SqliteError(err))
@@ -240,16 +227,19 @@ pub async fn swipe_user(
                     }
                 }
                 Ok(_) => {
-                    db.connection
+                    state
+                        .connection
+                        .get()
+                        .unwrap()
                         .execute("END TRANSACTION", [])
                         .map_err(transaction_error)?;
-                    Ok(utilities::responses::response_ok_with_message(
-                        None::<()>,
-                        "You love that person !".to_string(),
-                    ))
+                    response_ok_with_message(None::<()>, "you love that person !".to_string())
                 }
                 Err(err) => {
-                    db.connection
+                    state
+                        .connection
+                        .get()
+                        .unwrap()
                         .execute("END TRANSACTION", [])
                         .map_err(transaction_error)?;
                     Err(ServiceError::SqliteError(err))
@@ -257,7 +247,10 @@ pub async fn swipe_user(
             }
         }
         Err(err) => {
-            db.connection
+            state
+                .connection
+                .get()
+                .unwrap()
                 .execute("END TRANSACTION", [])
                 .map_err(transaction_error)?;
             Err(ServiceError::SqliteError(err))

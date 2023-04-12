@@ -1,4 +1,3 @@
-use actix_web::web;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
@@ -6,7 +5,7 @@ use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::message_service::CreateMessageRequest;
 use crate::AppState;
-
+use std::sync::Arc;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Message {
     pub id: usize,
@@ -18,12 +17,12 @@ pub struct Message {
 }
 
 pub fn create_message(
-    db: &web::Data<AppState>,
+    db: &Arc<AppState>,
     request: &CreateMessageRequest,
     creation_datetime: &String,
 ) -> Result<usize, SqliteError> {
-    let mut statement = db
-        .connection
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, seen, creation_datetime) VALUES (?, ?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
@@ -36,18 +35,15 @@ pub fn create_message(
         ])
         .map_err(map_sqlite_error)?;
 
-    let id_inserted: usize = db.connection.last_insert_rowid() as usize;
+    let id_inserted: usize = db.connection.get().unwrap().last_insert_rowid() as usize;
 
     Ok(id_inserted)
 }
 
 // Get messages in one love relations
-pub fn get_love_messages(
-    db: &web::Data<AppState>,
-    love_id: usize,
-) -> Result<Vec<Message>, SqliteError> {
-    let mut statement = db
-        .connection
+pub fn get_love_messages(db: &Arc<AppState>, love_id: usize) -> Result<Vec<Message>, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("SELECT * FROM Messages WHERE love_id = ?")
         .map_err(map_sqlite_error)?;
     let result_rows = statement
@@ -72,12 +68,9 @@ pub fn get_love_messages(
 }
 
 // Get all the messages of all the love relation of user_id
-pub fn get_lover_messages(
-    db: &web::Data<AppState>,
-    user_id: usize,
-) -> Result<Vec<Message>, SqliteError> {
-    let mut statement = db
-        .connection
+pub fn get_lover_messages(db: &Arc<AppState>, user_id: usize) -> Result<Vec<Message>, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover1 = ?)")
         .map_err(map_sqlite_error)?;
     let result_rows1 = statement
@@ -93,8 +86,8 @@ pub fn get_lover_messages(
         })
         .map_err(map_sqlite_error)?;
 
-    let mut statement = db
-        .connection
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("SELECT * FROM Messages WHERE love_id IN (SELECT love_id FROM Lovers WHERE Lovers.lover2 = ?)")
         .map_err(map_sqlite_error)?;
     let result_rows2 = statement
@@ -121,12 +114,9 @@ pub fn get_lover_messages(
     Ok(messages)
 }
 
-pub fn green_tick_message(
-    db: &web::Data<AppState>,
-    message_id: &usize,
-) -> Result<(), SqliteError> {
-    let mut statement = db
-        .connection
+pub fn green_tick_message(db: &Arc<AppState>, message_id: &usize) -> Result<(), SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("UPDATE Messages SET seen = ? WHERE message_id = ?")
         .map_err(map_sqlite_error)?;
 

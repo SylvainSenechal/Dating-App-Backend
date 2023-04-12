@@ -7,7 +7,6 @@ pub const OUTPUT_LEN: usize = 32; // determines the length of the returned hash 
 
 pub const DATABASE_NAME: &str = "love.db";
 
-pub const BEARER: &str = "Bearer ";
 pub const KEY_JWT: &[u8] = b"badObviousTestKey";
 pub const KEY_JWT_REFRESH: &[u8] = b"ohohoho";
 pub const TOKEN_LIFESPAN: usize = 10; // seconds

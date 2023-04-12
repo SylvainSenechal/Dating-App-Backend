@@ -1,11 +1,10 @@
-use actix_web::web;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::AppState;
-
+use std::sync::Arc;
 // todo : do not return pricate infos
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Lover {
@@ -38,13 +37,9 @@ pub struct LoveRelation {
     pub lover2: usize,
 }
 
-pub fn create_lovers(
-    db: &web::Data<AppState>,
-    lover1: usize,
-    lover2: usize,
-) -> Result<(), SqliteError> {
-    let mut statement = db
-        .connection
+pub fn create_lovers(db: &Arc<AppState>, lover1: usize, lover2: usize) -> Result<(), SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached("INSERT INTO Lovers (lover1, lover2) VALUES (?, ?)")
         .map_err(map_sqlite_error)?;
     statement
@@ -56,12 +51,9 @@ pub fn create_lovers(
 
 #[allow(dead_code)]
 // Get all the lovers of the user_id (user_id is exluded from result), a lover is a user, with an added love_id field
-pub fn get_love_relation(
-    db: &web::Data<AppState>,
-    love_id: usize,
-) -> Result<LoveRelation, SqliteError> {
-    let mut statement = db
-        .connection
+pub fn get_love_relation(db: &Arc<AppState>, love_id: usize) -> Result<LoveRelation, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached(
             "
             SELECT * FROM Lovers WHERE love_id = ?
@@ -81,12 +73,12 @@ pub fn get_love_relation(
 
 // Return true if user_id is in the loved_id relation
 pub fn user_in_love_relation(
-    db: &web::Data<AppState>,
+    db: &Arc<AppState>,
     user_id: usize,
     love_id: usize,
 ) -> Result<(), SqliteError> {
-    let mut statement = db
-        .connection
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached(
             "
         SELECT * FROM Lovers WHERE love_id = ? AND (lover1 = ? OR lover2 = ?)
@@ -100,9 +92,9 @@ pub fn user_in_love_relation(
 }
 
 // Get all the lovers of the user_id (user_id is exluded from result), a lover is a user, with an added love_id field
-pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>, SqliteError> {
-    let mut statement = db
-        .connection
+pub fn get_lovers(db: &Arc<AppState>, user_id: usize) -> Result<Vec<Lover>, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached(
             "
             SELECT * FROM Users JOIN Lovers ON Users.user_id = Lovers.lover1 WHERE Lovers.lover2 = ?
@@ -135,8 +127,8 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
         })
         .map_err(map_sqlite_error)?;
 
-    let mut statement = db
-        .connection
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached(
             "
             SELECT * FROM Users JOIN Lovers ON Users.user_id = Lovers.lover2 WHERE Lovers.lover1 = ?
@@ -180,9 +172,9 @@ pub fn get_lovers(db: &web::Data<AppState>, user_id: usize) -> Result<Vec<Lover>
     Ok(persons)
 }
 
-pub fn tick_love(db: &web::Data<AppState>, love_id: usize, lover_id: usize) -> Result<(), SqliteError> {
-    let mut statement = db
-        .connection
+pub fn tick_love(db: &Arc<AppState>, love_id: usize, lover_id: usize) -> Result<(), SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
         .prepare_cached(
             "
             UPDATE Lovers
