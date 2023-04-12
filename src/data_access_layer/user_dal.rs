@@ -202,40 +202,6 @@ impl User {
         Ok(())
     }
 
-    pub fn get_users(db: &Arc<AppState>) -> Result<Vec<User>, SqliteError> {
-        let binding = db.connection.get().unwrap();
-        let mut statement = binding
-            .prepare_cached("SELECT * FROM Users")
-            .map_err(map_sqlite_error)?;
-        let result_rows = statement
-            .query_map([], |row| {
-                Ok(User {
-                    id: row.get("user_id")?,
-                    name: row.get("name")?,
-                    password: "Have fun with this password bro".to_string(),
-                    email: row.get("email")?,
-                    last_seen: row.get("last_seen")?,
-                    age: row.get("age")?,
-                    latitude: row.get("latitude")?,
-                    longitude: row.get("longitude")?,
-                    gender: row.get("gender")?,
-                    looking_for: row.get("looking_for")?,
-                    search_radius: row.get("search_radius")?,
-                    looking_for_age_min: row.get("looking_for_age_min")?,
-                    looking_for_age_max: row.get("looking_for_age_max")?,
-                    description: row.get("description")?,
-                })
-            })
-            .map_err(map_sqlite_error)?;
-
-        let mut persons = Vec::new();
-        for person in result_rows {
-            persons.push(person.map_err(map_sqlite_error)?);
-        }
-
-        Ok(persons)
-    }
-
     pub fn find_love_target(
         db: &Arc<AppState>,
         user_id: usize,

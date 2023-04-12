@@ -70,7 +70,7 @@ pub async fn rejecting_count(
 }
 
 pub async fn backend_activity(
-    jwt_claims: JwtClaims,
+    _: JwtClaims,
     State(state): State<Arc<AppState>>,
 ) -> Result<(StatusCode, Json<ApiResponse<Vec<GetTracesResponse>>>), ServiceError> {
     let traces = data_access_layer::trace_dal::get_traces(&state)?;

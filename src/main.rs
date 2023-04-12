@@ -89,7 +89,6 @@ use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
-use tower_http::cors::Any;
 use tower_http::cors::CorsLayer;
 extern crate r2d2;
 extern crate r2d2_sqlite; // todo check "extern" keyword
@@ -119,12 +118,10 @@ impl AppState {
 #[tokio::main]
 async fn main() {
     let app = Router::new()
-        // .route("/users", get(service_layer::user_service::get_users))
         .route("/users", post(create_user))
-        .route(
-            "/users/:user_id",
-            get(get_user).put(update_user).delete(delete_user),
-        )
+        .route("/users/:user_id", get(get_user))
+        .route("/users/:user_id", put(update_user))
+        .route("/users/:user_id", delete(delete_user))
         .route(
             "/users/findlover",
             get(service_layer::user_service::find_love),

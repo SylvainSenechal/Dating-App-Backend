@@ -128,7 +128,7 @@ pub async fn update_user(
     if update_user_request.description.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
         return Err(ServiceError::SqlValueNotAccepted(
-            update_user_request.description.to_string(),
+            update_user_request.description,
             "Description string is too long".to_string(),
         ));
     }

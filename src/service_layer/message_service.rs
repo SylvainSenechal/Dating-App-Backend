@@ -1,5 +1,5 @@
 use crate::my_errors::service_errors::ServiceError;
-use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
+use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::auth_service::JwtClaims;
 // use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
 use crate::data_access_layer::message_dal::Message;
@@ -43,16 +43,16 @@ pub async fn create_message(
     if jwt_claims.user_id != create_message_request.poster_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    if create_message_request.message.len() == 0 {
+    if create_message_request.message.is_empty() {
         return Err(ServiceError::SqlValueNotAccepted(
-            create_message_request.message.to_string(),
+            create_message_request.message,
             "Empty messages not accepted".to_string(),
         ));
     }
     if create_message_request.message.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
         return Err(ServiceError::SqlValueNotAccepted(
-            create_message_request.message.to_string(),
+            create_message_request.message,
             "Message content string is too long".to_string(),
         ));
     }
