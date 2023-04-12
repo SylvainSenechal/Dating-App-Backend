@@ -19,19 +19,7 @@ pub async fn get_lovers(
     if jwt_claims.user_id != user_id {
         return Err(ServiceError::ForbiddenQuery);
     }
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("BEGIN TRANSACTION", [])
-        .map_err(transaction_error)?;
     let lovers_found = data_access_layer::lover_dal::get_lovers(&state, user_id);
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("END TRANSACTION", [])
-        .map_err(transaction_error)?;
     match lovers_found {
         Ok(lovers) => response_ok(Some(lovers)),
         Err(err) => Err(ServiceError::SqliteError(err)),

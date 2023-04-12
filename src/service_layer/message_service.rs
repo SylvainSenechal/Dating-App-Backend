@@ -69,37 +69,22 @@ pub async fn create_message(
     }
 
     let creation_datetime = format!("{:?}", chrono::offset::Utc::now());
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("BEGIN TRANSACTION", [])
-        .map_err(transaction_error)?;
-    let result_creation_message = data_access_layer::message_dal::create_message(
+
+    let id_message = data_access_layer::message_dal::create_message(
         &state,
         &create_message_request,
         &creation_datetime,
-    );
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("END TRANSACTION", [])
-        .map_err(transaction_error)?;
-    match result_creation_message {
-        Ok(id_message) => {
-            println!("message {} created", id_message);
-            // server.do_send(ChatMessage {
-            //     id_love_room: create_message_request.love_id,
-            //     id_message: id_message,
-            //     message: create_message_request.message.to_string(),
-            //     poster_id: create_message_request.poster_id,
-            //     creation_datetime: creation_datetime,
-            // });
-            response_ok_with_message(None::<()>, "message created".to_string())
-        }
-        Err(err) => Err(ServiceError::SqliteError(err)),
-    }
+    )?;
+    println!("message {} created", id_message);
+
+    // server.do_send(ChatMessage {
+    //     id_love_room: create_message_request.love_id,
+    //     id_message: id_message,
+    //     message: create_message_request.message.to_string(),
+    //     poster_id: create_message_request.poster_id,
+    //     creation_datetime: creation_datetime,
+    // });
+    response_ok_with_message(None::<()>, "message created".to_string())
 }
 
 // Get messages of one "love_id" love relations
@@ -137,7 +122,7 @@ pub async fn get_lover_messages(
 
 // Green tick a viewed message
 pub async fn green_tick_messages(
-    jwt_claims: JwtClaims,
+    _: JwtClaims, // todo : check if still protected when not using the variable
     State(state): State<Arc<AppState>>,
     Json(green_tick_messages_request): Json<GreenTickMessagesRequest>,
     // server: web::Data<Addr<Server>>,
@@ -145,13 +130,8 @@ pub async fn green_tick_messages(
     // TODO
     // Verify if the message you are green ticking is from a discussion that you "own",
     // and also that it's not your own message
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("BEGIN TRANSACTION", [])
-        .map_err(transaction_error)?;
 
+    // todo : see how to handle partial errors for this, maybe errors dont matter for message tick
     for message in &green_tick_messages_request.messages {
         match data_access_layer::message_dal::green_tick_message(&state, &message.message_id) {
             Ok(()) => {
@@ -164,13 +144,6 @@ pub async fn green_tick_messages(
             // !!!!! TODO : For every transaction, if error, unlock db by ending transaction..
         }
     }
-
-    state
-        .connection
-        .get()
-        .unwrap()
-        .execute("END TRANSACTION", [])
-        .map_err(transaction_error)?;
 
     response_ok(None::<()>)
 }

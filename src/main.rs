@@ -26,6 +26,8 @@ use constants::constants::DATABASE_NAME;
 // TODO : get les ocnnections une fois par fonction..
 // TODO : change routes /users/ en /action
 // todo : refactor id => uuid
+// toto : add a report table
+// toto : add a suggestions/bugs table
 
 // #[derive(Debug)]
 // pub struct AppState {
@@ -117,7 +119,6 @@ impl AppState {
 #[tokio::main]
 async fn main() {
     let app = Router::new()
- 
         // .route("/users", get(service_layer::user_service::get_users))
         .route("/users", post(create_user))
         .route(
@@ -128,7 +129,10 @@ async fn main() {
             "/users/findlover",
             get(service_layer::user_service::find_love),
         )
-        .route("/users/swipe", get(service_layer::user_service::swipe_user))
+        .route(
+            "/users/swipe",
+            post(service_layer::user_service::swipe_user),
+        )
         .route(
             "/users/:user_id/statistics/loved",
             get(service_layer::statistics_service::loved_count),
@@ -163,7 +167,7 @@ async fn main() {
         )
         .route(
             "/messages/users/:user_id",
-            post(service_layer::message_service::get_lover_messages),
+            get(service_layer::message_service::get_lover_messages),
         )
         .route("/photos", post(service_layer::photos_service::save_file))
         .route(
@@ -188,9 +192,15 @@ async fn main() {
                     http::header::CONTENT_TYPE,
                     http::header::AUTHORIZATION,
                     http::header::ACCEPT,
-                    http::header::HeaderName::from_lowercase(b"trace").unwrap()
+                    http::header::HeaderName::from_lowercase(b"trace").unwrap(),
                 ])
-                .allow_methods(vec![Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS]),
+                .allow_methods(vec![
+                    Method::GET,
+                    Method::POST,
+                    Method::PUT,
+                    Method::DELETE,
+                    Method::OPTIONS,
+                ]),
         )
         .with_state(Arc::new(AppState::new()));
 

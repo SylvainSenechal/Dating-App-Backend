@@ -182,6 +182,7 @@ pub async fn swipe_user(
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", swipe_user_request);
 
+    // todo : refactor transaction here
     state
         .connection
         .get()

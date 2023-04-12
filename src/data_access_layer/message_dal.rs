@@ -21,11 +21,11 @@ pub fn create_message(
     request: &CreateMessageRequest,
     creation_datetime: &String,
 ) -> Result<usize, SqliteError> {
-    let binding = db.connection.get().unwrap();
-    let mut statement = binding
+    let mut binding = db.connection.get().unwrap();
+    let tx = binding.transaction().map_err(map_sqlite_error)?;
+    tx
         .prepare_cached("INSERT INTO Messages (message, poster_id, love_id, seen, creation_datetime) VALUES (?, ?, ?, ?, ?)")
-        .map_err(map_sqlite_error)?;
-    statement
+        .map_err(map_sqlite_error)?
         .execute(params![
             request.message,
             request.poster_id,
@@ -35,7 +35,8 @@ pub fn create_message(
         ])
         .map_err(map_sqlite_error)?;
 
-    let id_inserted: usize = db.connection.get().unwrap().last_insert_rowid() as usize;
+    let id_inserted: usize = tx.last_insert_rowid() as usize;
+    tx.commit().map_err(map_sqlite_error)?;
 
     Ok(id_inserted)
 }
