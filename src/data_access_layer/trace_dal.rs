@@ -5,6 +5,8 @@ use chrono;
 use rusqlite::params;
 use serde::Serialize;
 use std::sync::Arc;
+use uuid::Uuid;
+
 pub struct TraceRequest<'a> {
     pub trace_id: Option<usize>,
     pub ip: Option<std::net::SocketAddr>,
@@ -29,10 +31,11 @@ pub struct GetTracesResponse {
 pub fn create_trace(db: &Arc<AppState>, trace: TraceRequest) -> Result<(), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("INSERT INTO Traces (trace_id, datetime, ip, method, path, query_string, data) VALUES (?, ?, ?, ?, ?, ?, ?)")
+        .prepare_cached("INSERT INTO Traces (trace_uuid, trace_id, datetime, ip, method, path, query_string, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
         .execute(params![
+            Uuid::now_v7().to_string(),
             trace.trace_id,
             format!("{:?}", chrono::offset::Utc::now()),
             trace.ip.expect("should have ip").to_string(), // TODO avoid expect here

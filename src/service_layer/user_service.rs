@@ -28,15 +28,15 @@ pub struct CreateUserRequest {
     pub looking_for: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SwipeUserRequest {
-    pub swiped: usize,
-    pub love: u8, // boolean for sqlite, 0 = dont love, 1 - love
+    pub swiped_uuid: String,
+    pub love: bool, // boolean for sqlite, 0 = dont love, 1 - love
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct UpdateUserInfosReq {
-    pub id: usize,
+    pub uuid: String,
     pub name: String,
     pub password: String,
     pub email: String,
@@ -86,24 +86,24 @@ pub async fn create_user(
 pub async fn get_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::User::get_user_by_id(&state, user_id)?;
+    let user_found = data_access_layer::user_dal::User::get_user_by_uuid(&state, user_uuid)?;
     response_ok(Some(user_found))
 }
 
 pub async fn delete_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    data_access_layer::user_dal::User::delete_user_by_id(&state, user_id)?;
+    data_access_layer::user_dal::User::delete_user_by_uuid(&state, user_uuid)?;
     response_ok_with_message(None::<()>, "user deleted successfully".to_string())
 }
 
@@ -119,10 +119,10 @@ pub async fn delete_user(
 pub async fn update_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
     Json(update_user_request): Json<UpdateUserInfosReq>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     if update_user_request.description.chars().count() > 1000 {
@@ -139,11 +139,12 @@ pub async fn update_user(
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
 
-pub async fn find_love(
+pub async fn find_lover(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
 ) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
-    let user = data_access_layer::user_dal::User::get_user_by_id(&state, jwt_claims.user_id);
+    let user =
+        data_access_layer::user_dal::User::get_user_by_uuid(&state, jwt_claims.user_uuid.clone());
     let user = match user {
         Ok(user) => user,
         Err(err) => return Err(ServiceError::SqliteError(err)),
@@ -151,7 +152,7 @@ pub async fn find_love(
 
     let potential_lover = data_access_layer::user_dal::User::find_love_target(
         &state,
-        jwt_claims.user_id,
+        jwt_claims.user_uuid,
         user.looking_for,
         user.gender,
         user.search_radius,
@@ -181,6 +182,10 @@ pub async fn swipe_user(
     Json(swipe_user_request): Json<SwipeUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", swipe_user_request);
+    if jwt_claims.user_uuid == swipe_user_request.swiped_uuid {
+        // Cannot swipe yourself..
+        return Err(ServiceError::ForbiddenQuery);
+    }
 
     // todo : refactor transaction here
     state
@@ -191,21 +196,21 @@ pub async fn swipe_user(
         .map_err(transaction_error)?;
     match data_access_layer::user_dal::User::swipe_user(
         &state,
-        jwt_claims.user_id,
-        swipe_user_request.swiped,
-        swipe_user_request.love,
+        jwt_claims.user_uuid.clone(),
+        swipe_user_request.swiped_uuid.clone(),
+        u8::from(swipe_user_request.love),
     ) {
         Ok(()) => {
             match data_access_layer::user_dal::User::check_mutual_love(
                 &state,
-                jwt_claims.user_id,
-                swipe_user_request.swiped,
+                jwt_claims.user_uuid.clone(),
+                swipe_user_request.swiped_uuid.clone(),
             ) {
                 Ok(2) => {
                     match data_access_layer::lover_dal::create_lovers(
                         &state,
-                        jwt_claims.user_id,
-                        swipe_user_request.swiped,
+                        jwt_claims.user_uuid,
+                        swipe_user_request.swiped_uuid,
                     ) {
                         Ok(_) => {
                             state

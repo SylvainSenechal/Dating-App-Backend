@@ -1,6 +1,7 @@
 -- cat databaseCreation.sql | sqlite3 love.db
 CREATE TABLE IF NOT EXISTS Users (
     user_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    user_uuid BLOB NOT NULL,
     name TEXT NOT NULL,
     password TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
@@ -10,8 +11,14 @@ CREATE TABLE IF NOT EXISTS Users (
         age > 17
         AND age < 128
     ) NOT NULL,
-    latitude REAL NOT NULL,
-    longitude REAL NOT NULL,
+    latitude REAL CHECK (
+        latitude >= -90
+        AND latitude <= 90
+    ) NOT NULL,
+    longitude REAL CHECK (
+        longitude >= -180
+        AND longitude <= 180
+    ) NOT NULL,
     gender TEXT CHECK (gender IN ('male', 'female')) NOT NULL,
     looking_for TEXT CHECK (looking_for IN ('male', 'female')) NOT NULL,
     search_radius INTEGER CHECK (
@@ -33,44 +40,49 @@ CREATE TABLE IF NOT EXISTS Users (
 CREATE INDEX IF NOT EXISTS nomIndex ON Users(name);
 CREATE TABLE IF NOT EXISTS Photos (
     photo_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    photo_uuid BLOB NOT NULL,
+    user_uuid BLOB NOT NULL,
     url TEXT NOT NULL,
-    FOREIGN KEY(user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+    FOREIGN KEY(user_uuid) REFERENCES Users(user_uuid) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS MatchingResults (
     match_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    swiper INTEGER NOT NULL,
-    swiped INTEGER NOT NULL,
+    match_uuid BLOB NOT NULL,
+    swiper BLOB NOT NULL,
+    swiped BLOB NOT NULL,
     love INTEGER CHECK (love IN (0, 1)) NOT NULL,
-    FOREIGN KEY(swiper) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(swiped) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(swiper) REFERENCES Users(user_uuid) ON DELETE CASCADE,
+    FOREIGN KEY(swiped) REFERENCES Users(user_uuid) ON DELETE CASCADE,
     UNIQUE (swiper, swiped)
 );
 CREATE TABLE IF NOT EXISTS Lovers (
     love_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    lover1 INTEGER NOT NULL,
-    lover2 INTEGER NOT NULL,
+    love_uuid BLOB NOT NULL,
+    lover1 BLOB NOT NULL,
+    lover2 BLOB NOT NULL,
     -- When the match just happened, this is to show notificationsgit 
     seen_by_lover1 INTEGER CHECK (seen_by_lover1 IN (0, 1)) NOT NULL DEFAULT 0,
     seen_by_lover2 INTEGER CHECK (seen_by_lover2 IN (0, 1)) NOT NULL DEFAULT 0,
-    FOREIGN KEY(lover1) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(lover2) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY(lover1) REFERENCES Users(user_uuid) ON DELETE CASCADE,
+    FOREIGN KEY(lover2) REFERENCES Users(user_uuid) ON DELETE CASCADE,
     UNIQUE (lover1, lover2)
 );
 CREATE TABLE IF NOT EXISTS Messages (
     message_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    message_uuid BLOB NOT NULL,
     message TEXT CHECK(LENGTH(message) <= 1000),
-    poster_id INTEGER NOT NULL,
-    love_id INTEGER NOT NULL,
+    poster_uuid BLOB NOT NULL,
+    love_uuid BLOB NOT NULL,
     -- if seen, it means the user who didnt post the message saw the message
     seen INTEGER CHECK (seen IN (0, 1)) NOT NULL DEFAULT 0,
     --UTC ISO8601 from Rust Crate=chrono, example : 2022-02-14T19:47:51.028632Z
     creation_datetime TEXT NOT NULL,
-    FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY(love_id) REFERENCES Lovers(love_id) ON DELETE CASCADE
+    FOREIGN KEY(poster_uuid) REFERENCES Users(user_uuid) ON DELETE CASCADE,
+    FOREIGN KEY(love_uuid) REFERENCES Lovers(love_uuid) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS Traces (
     trace_pk_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    trace_uuid BLOB NOT NULL,
     trace_id INTEGER,
     datetime TEXT,
     ip TEXT,
@@ -78,10 +90,12 @@ CREATE TABLE IF NOT EXISTS Traces (
     method TEXT,
     query_string TEXT,
     data TEXT
-) -- CREATE TABLE IF NOT EXISTS Feedbacks (
+)
+-- CREATE TABLE IF NOT EXISTS Feedbacks (
 --     feedback_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
---     poster_id INTEGER NOT NULL,
+--     trace_uuid BLOB NOT NULL,
+--     poster_uuid INTEGER NOT NULL,
 --     feedback_message TEXT NOT NULL,
 --     creation_datetime TEXT NOT NULL,
---     FOREIGN KEY(poster_id) REFERENCES Users(user_id) ON DELETE CASCADE, -- On delete cascade not sure
+--     FOREIGN KEY(poster_uuid) REFERENCES Users(user_uuid) ON DELETE CASCADE, -- On delete cascade not sure
 -- )

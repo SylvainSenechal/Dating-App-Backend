@@ -17,13 +17,13 @@ pub async fn loved_count(
     // How many users loved you
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     let swiped_count =
-        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_id, 1)?;
+        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_uuid, 1)?;
     response_ok(Some(swiped_count))
 }
 
@@ -31,13 +31,13 @@ pub async fn rejected_count(
     // How many users rejected you
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     let swiped_count =
-        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_id, 0)?;
+        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_uuid, 0)?;
     response_ok(Some(swiped_count))
 }
 
@@ -45,13 +45,13 @@ pub async fn loving_count(
     // How many users you loved
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     let swiped_count =
-        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_id, 1)?;
+        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_uuid, 1)?;
     response_ok(Some(swiped_count))
 }
 
@@ -59,13 +59,13 @@ pub async fn rejecting_count(
     // How many users you rejected
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     let swiped_count =
-        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_id, 0)?;
+        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_uuid, 0)?;
     response_ok(Some(swiped_count))
 }
 

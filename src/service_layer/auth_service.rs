@@ -39,7 +39,7 @@ pub struct TokenRefreshRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct JwtClaims {
-    pub user_id: usize,
+    pub user_uuid: String,
     exp: usize,
 }
 
@@ -67,7 +67,7 @@ pub async fn login(
     println!("user found {:?}", user_found);
 
     match user_found {
-        Ok((user_id, password)) => {
+        Ok((user_uuid, password)) => {
             let rehash = PasswordHash::new(&password).unwrap(); // Turning string into PHC string format type
             let valid_password =
                 Argon2::default().verify_password(login_user.password.as_bytes(), &rehash);
@@ -75,7 +75,7 @@ pub async fn login(
             match valid_password {
                 Ok(_) => {
                     let my_claims = JwtClaims {
-                        user_id: user_id,
+                        user_uuid: user_uuid.clone(),
                         exp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("failed getting current timestamp")
@@ -83,7 +83,7 @@ pub async fn login(
                             + TOKEN_LIFESPAN,
                     };
                     let my_refresh_claims = JwtClaims {
-                        user_id: user_id,
+                        user_uuid: user_uuid,
                         exp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("failed getting current timestamp")
@@ -137,7 +137,7 @@ pub async fn token_refresh(
         Ok(data) => {
             println!("{:?}", data);
             let my_claims = JwtClaims {
-                user_id: data.claims.user_id,
+                user_uuid: data.claims.user_uuid,
                 exp: SystemTime::now()
                     .duration_since(UNIX_EPOCH)
                     .expect("failed getting current timestamp")

@@ -1,3 +1,4 @@
+use crate::{data_access_layer, AppState};
 use axum::Json;
 use axum::{
     extract::Query,
@@ -21,8 +22,17 @@ use tokio::sync::broadcast;
 use tower_http::cors::Any;
 use tower_http::cors::CorsLayer;
 use tower_http::{services::ServeDir, trace::TraceLayer};
-use crate::{data_access_layer, AppState};
 
+#[derive(Serialize, Clone, Debug)]
+pub enum SseMessage {
+    ChatMessage {
+        uuid_love_room: String,
+        uuid_message: String,
+        message: String,
+        poster_uuid: String,
+        creation_datetime: String,
+    },
+}
 
 pub async fn server_side_event_handler(
     State(state): State<Arc<AppState>>,
@@ -37,10 +47,9 @@ pub async fn server_side_event_handler(
         }
     }
 
-    let (tx, mut red) = broadcast::channel::<ChatMessage>(1);
+    let (tx, mut red) = broadcast::channel::<SseMessage>(1);
     // state.txs.lock().unwrap().insert(pagination.id, tx);
     state.txs.lock().unwrap().insert(0, tx);
-
 
     let stream = async_stream::stream! {
         // let _guard = Guard {};
@@ -55,5 +64,3 @@ pub async fn server_side_event_handler(
 
     Sse::new(stream)
 }
-
-use crate::service_layer::message_service::ChatMessage;

@@ -66,7 +66,6 @@ use constants::constants::DATABASE_NAME;
 //     }
 // }
 
-
 // async fn fake_admin() -> HttpResponse {
 //     println!("Fake admin visited");
 //     HttpResponse::NotFound().body("What are you doing here 👀")
@@ -90,13 +89,13 @@ extern crate r2d2;
 extern crate r2d2_sqlite; // todo check "extern" keyword
 use r2d2_sqlite::SqliteConnectionManager;
 
+use crate::service_layer::sse_service::SseMessage;
 use service_layer::user_service::{create_user, delete_user, get_user, update_user};
-use crate::service_layer::message_service::ChatMessage;
 use uuid::Uuid;
 
 pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
-    txs: Mutex<HashMap<usize, broadcast::Sender<ChatMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
+    txs: Mutex<HashMap<usize, broadcast::Sender<SseMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
 }
 
 impl AppState {
@@ -112,55 +111,53 @@ impl AppState {
         }
     }
 }
-use uuid::NoContext;
-use uuid::timestamp::Timestamp;
+
+use tracing::{info_span, Span};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
 #[tokio::main]
 async fn main() {
-    let id = Uuid::now_v7();
-    println!("{}", id);
-    println!("{}", id.to_string());
-
-    let ts: u64 = 1645557742000;
-
-    let seconds = ts / 1000;
-    let nanos = ((ts % 1000) * 1_000_000) as u32;
-
-    let uuid = Uuid::new_v7(Timestamp::from_unix(NoContext, seconds, nanos));
-    let uustr = uuid.hyphenated().to_string();
-    println!("{}", uuid);
-    println!("{}", uustr);
-
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                // axum logs rejections from built-in extractors with the `axum::rejection`
+                // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
+                "example_tracing_aka_logging=debug,tower_http=debug,axum::rejection=trace".into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     let app = Router::new()
         .route("/users", post(create_user))
-        .route("/users/:user_id", get(get_user))
-        .route("/users/:user_id", put(update_user))
-        .route("/users/:user_id", delete(delete_user))
+        .route("/users/:user_uuid", get(get_user))
+        .route("/users/:user_uuid", put(update_user))
+        .route("/users/:user_uuid", delete(delete_user))
         .route(
             "/users/findlover",
-            get(service_layer::user_service::find_love),
+            get(service_layer::user_service::find_lover),
         )
         .route(
             "/users/swipe",
             post(service_layer::user_service::swipe_user),
         )
         .route(
-            "/users/:user_id/statistics/loved",
+            "/users/:user_uuid/statistics/loved",
             get(service_layer::statistics_service::loved_count),
         )
         .route(
-            "/users/:user_id/statistics/rejected",
+            "/users/:user_uuid/statistics/rejected",
             get(service_layer::statistics_service::rejected_count),
         )
         .route(
-            "/users/:user_id/statistics/loving",
+            "/users/:user_uuid/statistics/loving",
             get(service_layer::statistics_service::loving_count),
         )
         .route(
-            "/users/:user_id/statistics/rejecting",
+            "/users/:user_uuid/statistics/rejecting",
             get(service_layer::statistics_service::rejecting_count),
         )
         .route(
-            "/users/:user_id/statistics/traces",
+            "/users/:user_uuid/statistics/traces",
             get(service_layer::statistics_service::backend_activity),
         )
         .route(
@@ -172,20 +169,20 @@ async fn main() {
             put(service_layer::message_service::green_tick_messages),
         )
         .route(
-            "/messages/:love_id",
+            "/messages/:love_uuid",
             get(service_layer::message_service::get_love_messages),
         )
         .route(
-            "/messages/users/:user_id",
+            "/messages/users/:user_uuid",
             get(service_layer::message_service::get_lover_messages),
         )
         .route("/photos", post(service_layer::photos_service::save_file))
         .route(
-            "/lovers/:user_id",
+            "/lovers/:user_uuid",
             get(service_layer::lover_service::get_lovers),
         )
         .route(
-            "/lovers/action/:love_id/tick_love",
+            "/lovers/action/:love_uuid/tick_love",
             put(service_layer::lover_service::tick_love),
         )
         .route("/auth", post(service_layer::auth_service::login))
@@ -193,7 +190,10 @@ async fn main() {
             "/auth/refresh",
             post(service_layer::auth_service::token_refresh),
         )
-        .route("/server_side_event", get(service_layer::sse_service::server_side_event_handler))
+        .route(
+            "/server_side_event",
+            get(service_layer::sse_service::server_side_event_handler),
+        )
         .fallback(p404)
         .layer(
             CorsLayer::new()
@@ -214,7 +214,6 @@ async fn main() {
                 ]),
         )
         .with_state(Arc::new(AppState::new()));
-
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("listening on {}", addr);

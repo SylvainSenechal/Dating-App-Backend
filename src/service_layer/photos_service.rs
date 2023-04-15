@@ -9,7 +9,7 @@ pub async fn save_file(
     // mut payload: Multipart,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     // ) -> Result<HttpResponse, Error> {
-    println!("ID user authorized to save file : {}", jwt_claims.user_id);
+    println!("ID user authorized to save file : {}", jwt_claims.user_uuid);
     // // iterate over multipart stream
     // while let Some(mut field) = payload.try_next().await? {
     //     // A multipart/form-data stream has to contain `content_disposition`

@@ -13,12 +13,12 @@ use std::sync::Arc;
 pub async fn get_lovers(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<Vec<Lover>>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let lovers_found = data_access_layer::lover_dal::get_lovers(&state, user_id);
+    let lovers_found = data_access_layer::lover_dal::get_lovers(&state, user_uuid);
     match lovers_found {
         Ok(lovers) => response_ok(Some(lovers)),
         Err(err) => Err(ServiceError::SqliteError(err)),
@@ -28,10 +28,10 @@ pub async fn get_lovers(
 pub async fn tick_love(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(love_id): Path<usize>,
+    Path(love_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     // TODO : verify that authorized.id is in the love_id relation
 
-    data_access_layer::lover_dal::tick_love(&state, love_id, jwt_claims.user_id)?;
+    data_access_layer::lover_dal::tick_love(&state, love_uuid, jwt_claims.user_uuid)?;
     response_ok(None::<()>)
 }

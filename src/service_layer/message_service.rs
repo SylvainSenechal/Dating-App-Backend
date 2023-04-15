@@ -3,6 +3,7 @@ use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::auth_service::JwtClaims;
 // use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
 use crate::data_access_layer::message_dal::Message;
+use crate::service_layer::sse_service::SseMessage;
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
 use crate::{data_access_layer, AppState};
 use axum::{
@@ -17,8 +18,8 @@ use std::sync::Arc;
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct CreateMessageRequest {
     pub message: String,
-    pub poster_id: usize,
-    pub love_id: usize,
+    pub poster_uuid: String,
+    pub love_uuid: String,
 }
 
 #[derive(Deserialize)]
@@ -28,8 +29,8 @@ pub struct GreenTickMessagesRequest {
 
 #[derive(Deserialize)]
 pub struct GreenTickMessageRequest {
-    pub message_id: usize,
-    pub love_id: usize,
+    pub message_uuid: String,
+    pub love_uuid: String,
 }
 
 // Post a message by poster_id in the love_id relation
@@ -40,7 +41,7 @@ pub async fn create_message(
     // server: web::Data<Addr<Server>>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_message_request);
-    if jwt_claims.user_id != create_message_request.poster_id {
+    if jwt_claims.user_uuid != create_message_request.poster_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
     if create_message_request.message.is_empty() {
@@ -58,8 +59,8 @@ pub async fn create_message(
     }
     match data_access_layer::lover_dal::user_in_love_relation(
         &state,
-        create_message_request.poster_id,
-        create_message_request.love_id,
+        create_message_request.poster_uuid.clone(),
+        create_message_request.love_uuid.clone(),
     ) {
         Ok(_) => (),
         Err(err) => match err {
@@ -70,77 +71,60 @@ pub async fn create_message(
 
     let creation_datetime = format!("{:?}", chrono::offset::Utc::now());
 
-    let id_message = data_access_layer::message_dal::create_message(
+    let uuid_message = data_access_layer::message_dal::create_message(
         &state,
         &create_message_request,
         &creation_datetime,
     )?;
-    println!("message {} created", id_message);
+    println!("message {} created", uuid_message);
 
-    // server.do_send(ChatMessage {
-    //     id_love_room: create_message_request.love_id,
-    //     id_message: id_message,
-    //     message: create_message_request.message.to_string(),
-    //     poster_id: create_message_request.poster_id,
-    //     creation_datetime: creation_datetime,
-    // });
-    let message = ChatMessage {
-        id_love_room: create_message_request.love_id,
-        id_message: id_message,
+    let message = SseMessage::ChatMessage {
+        uuid_love_room: create_message_request.love_uuid,
+        uuid_message: uuid_message,
         message: create_message_request.message.to_string(),
-        poster_id: create_message_request.poster_id,
+        poster_uuid: create_message_request.poster_uuid,
         creation_datetime: creation_datetime,
     };
-    let oo = state
-    .txs
-    .lock()
-    .unwrap()
-    .get(&0)
-    .unwrap()
-    .send(message);
-    // .send("proute".to_owned()); // .send("proute".to_owned());
-    println!("SSSS {:?}", oo);
+
+    // todo : handle result ?
+    state.txs.lock().unwrap().get(&0).unwrap().send(message);
     response_ok_with_message(None::<()>, "message created".to_string())
 }
-#[derive(Serialize, Clone, Debug)]
-pub struct ChatMessage {
-    pub id_love_room: usize,
-    pub id_message: usize,
-    pub message: String,
-    pub poster_id: usize,
-    pub creation_datetime: String,
-}
 
-// Get messages of one "love_id" love relations
+// Get messages of one "love_uuid" love relations
 pub async fn get_love_messages(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(love_id): Path<usize>,
+    Path(love_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<Vec<Message>>>), ServiceError> {
-    match data_access_layer::lover_dal::user_in_love_relation(&state, jwt_claims.user_id, love_id) {
+    match data_access_layer::lover_dal::user_in_love_relation(
+        &state,
+        jwt_claims.user_uuid.clone(),
+        love_uuid.clone(),
+    ) {
         Ok(_) => println!(
             "{} user allowed to get messages of {} love relationship",
-            jwt_claims.user_id, love_id
+            jwt_claims.user_uuid, love_uuid
         ),
         Err(err) => match err {
             SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery),
             _ => return Err(ServiceError::UnknownServiceError),
         },
     }
-    let messages_found = data_access_layer::message_dal::get_love_messages(&state, love_id)?;
+    let messages_found = data_access_layer::message_dal::get_love_messages(&state, love_uuid)?;
     response_ok(Some(messages_found))
 }
 
-// Get all the messages of all the love relation of "user_id"
+// Get all the messages of all the love relation of "user_uuid"
 pub async fn get_lover_messages(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Path(user_id): Path<usize>,
+    Path(user_uuid): Path<String>,
 ) -> Result<(StatusCode, Json<ApiResponse<Vec<Message>>>), ServiceError> {
-    if jwt_claims.user_id != user_id {
+    if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let messages_found = data_access_layer::message_dal::get_lover_messages(&state, user_id)?;
+    let messages_found = data_access_layer::message_dal::get_lover_messages(&state, user_uuid)?;
     response_ok(Some(messages_found))
 }
 
@@ -157,7 +141,10 @@ pub async fn green_tick_messages(
 
     // todo : see how to handle partial errors for this, maybe errors dont matter for message tick
     for message in &green_tick_messages_request.messages {
-        match data_access_layer::message_dal::green_tick_message(&state, &message.message_id) {
+        match data_access_layer::message_dal::green_tick_message(
+            &state,
+            message.message_uuid.clone(),
+        ) {
             Ok(()) => {
                 // server.do_send(GreenTickMessage {
                 //     id_love_room: message.love_id,
