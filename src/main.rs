@@ -9,7 +9,6 @@ mod utilities;
 
 use constants::constants::DATABASE_NAME;
 // TODO : Rework Actions CI/CD
-// TODO : Show last active time on discussion
 // TODO : Show when swiping if the user liked me already
 // TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
 // TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
@@ -18,16 +17,16 @@ use constants::constants::DATABASE_NAME;
 // TODO : Check sql injections in message, other fields
 // TODO : Lover do not return password
 // TODO : Clean struct into Request/Response/DTO folder
-// TODO : fonctionnalite send developer feedback
 // TODO : red dot sur activite swutcher nb new match
 // TODO : indicateur horizontal derniere connexion dans message
-// TODO : Get user info a revoir, selon que ce soit moi ou un autre
 // TODO : Local cache
 // TODO : get les ocnnections une fois par fonction..
 // TODO : change routes /users/ en /action
 // todo : refactor id => uuid
-// toto : add a report table
-// toto : add a suggestions/bugs table
+// todo : add a report table
+// todo : add a suggestions/bugs table / fonctionnalite send developer feedback
+// todo : retester les error messages
+// todo : check ON DELETE CASCADE
 
 // #[derive(Debug)]
 // pub struct AppState {
@@ -67,9 +66,6 @@ use constants::constants::DATABASE_NAME;
 //     }
 // }
 
-// async fn p404() -> HttpResponse {
-//     HttpResponse::NotFound().body("Four O Four : Nothing to see here dud 👀")
-// }
 
 // async fn fake_admin() -> HttpResponse {
 //     println!("Fake admin visited");
@@ -95,10 +91,12 @@ extern crate r2d2_sqlite; // todo check "extern" keyword
 use r2d2_sqlite::SqliteConnectionManager;
 
 use service_layer::user_service::{create_user, delete_user, get_user, update_user};
+use crate::service_layer::message_service::ChatMessage;
+use uuid::Uuid;
 
 pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
-    txs: Mutex<HashMap<usize, broadcast::Sender<String>>>, // TODO : revoir user broadcast, or oneshoot etc ?
+    txs: Mutex<HashMap<usize, broadcast::Sender<ChatMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
 }
 
 impl AppState {
@@ -114,9 +112,24 @@ impl AppState {
         }
     }
 }
-
+use uuid::NoContext;
+use uuid::timestamp::Timestamp;
 #[tokio::main]
 async fn main() {
+    let id = Uuid::now_v7();
+    println!("{}", id);
+    println!("{}", id.to_string());
+
+    let ts: u64 = 1645557742000;
+
+    let seconds = ts / 1000;
+    let nanos = ((ts % 1000) * 1_000_000) as u32;
+
+    let uuid = Uuid::new_v7(Timestamp::from_unix(NoContext, seconds, nanos));
+    let uustr = uuid.hyphenated().to_string();
+    println!("{}", uuid);
+    println!("{}", uustr);
+
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users/:user_id", get(get_user))
@@ -180,6 +193,7 @@ async fn main() {
             "/auth/refresh",
             post(service_layer::auth_service::token_refresh),
         )
+        .route("/server_side_event", get(service_layer::sse_service::server_side_event_handler))
         .fallback(p404)
         .layer(
             CorsLayer::new()
@@ -201,9 +215,6 @@ async fn main() {
         )
         .with_state(Arc::new(AppState::new()));
 
-    // .route("/a", get(handler))
-    // .route("/yo", get(yo))
-    // .route("/sse", get(sse_handler));
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("listening on {}", addr);

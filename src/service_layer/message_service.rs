@@ -84,7 +84,31 @@ pub async fn create_message(
     //     poster_id: create_message_request.poster_id,
     //     creation_datetime: creation_datetime,
     // });
+    let message = ChatMessage {
+        id_love_room: create_message_request.love_id,
+        id_message: id_message,
+        message: create_message_request.message.to_string(),
+        poster_id: create_message_request.poster_id,
+        creation_datetime: creation_datetime,
+    };
+    let oo = state
+    .txs
+    .lock()
+    .unwrap()
+    .get(&0)
+    .unwrap()
+    .send(message);
+    // .send("proute".to_owned()); // .send("proute".to_owned());
+    println!("SSSS {:?}", oo);
     response_ok_with_message(None::<()>, "message created".to_string())
+}
+#[derive(Serialize, Clone, Debug)]
+pub struct ChatMessage {
+    pub id_love_room: usize,
+    pub id_message: usize,
+    pub message: String,
+    pub poster_id: usize,
+    pub creation_datetime: String,
 }
 
 // Get messages of one "love_id" love relations
@@ -122,7 +146,7 @@ pub async fn get_lover_messages(
 
 // Green tick a viewed message
 pub async fn green_tick_messages(
-    _: JwtClaims, // todo : check if still protected when not using the variable
+    _: JwtClaims,
     State(state): State<Arc<AppState>>,
     Json(green_tick_messages_request): Json<GreenTickMessagesRequest>,
     // server: web::Data<Addr<Server>>,
@@ -139,6 +163,15 @@ pub async fn green_tick_messages(
                 //     id_love_room: message.love_id,
                 //     id_message: message.message_id,
                 // });
+
+                // let oo = state
+                // .txs
+                // .lock()
+                // .unwrap()
+                // .get(&0)
+                // .unwrap()
+                // .send("proute".to_owned()); // .send("proute".to_owned());
+                // println!("SSSS {:?}", oo);
             }
             Err(err) => return Err(ServiceError::SqliteError(err)),
             // !!!!! TODO : For every transaction, if error, unlock db by ending transaction..
