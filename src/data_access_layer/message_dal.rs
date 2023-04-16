@@ -168,14 +168,30 @@ pub fn green_tick_messages(
     db: &Arc<AppState>,
     love_uuid: String,
     lover_ticked_uuid: String,
+    lover_uuid: String,
 ) -> Result<(), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("UPDATE Messages SET seen = ? WHERE love_uuid = ? AND poster_uuid = ?")
+        .prepare_cached(
+            "UPDATE Messages 
+                SET seen = ? 
+                WHERE love_uuid = ? AND poster_uuid = ?
+                AND love_uuid IN ( -- // Green tick only messages that belongs to your conversation
+                    SELECT love_uuid FROM Lovers
+                    WHERE lover1 = ? OR lover2 = ?
+                )
+        ",
+        )
         .map_err(map_sqlite_error)?;
 
     statement
-        .execute(params![1, love_uuid, lover_ticked_uuid])
+        .execute(params![
+            1,
+            love_uuid,
+            lover_ticked_uuid,
+            lover_uuid,
+            lover_uuid
+        ])
         .map_err(map_sqlite_error)?;
     Ok(())
 }

@@ -33,7 +33,6 @@ pub async fn create_message(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Json(create_message_request): Json<CreateMessageRequest>,
-    // server: web::Data<Addr<Server>>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_message_request);
     if jwt_claims.user_uuid != create_message_request.poster_uuid {
@@ -46,7 +45,6 @@ pub async fn create_message(
         ));
     }
     if create_message_request.message.chars().count() > 1000 {
-        // Warning : Be carefull when counting string chars(), this needs tests..
         return Err(ServiceError::ValueNotAccepted(
             create_message_request.message,
             "Message content string is too long".to_string(),
@@ -87,13 +85,18 @@ pub async fn create_message(
     let (uuid1, uuid2) =
         data_access_layer::message_dal::get_lovers_uuids_from_message_uuid(&state, uuid_message)?;
 
-    // todo : handle result ?
     let rooms = state.txs.lock().unwrap();
     if let Some(sender) = rooms.get(&uuid1) {
-        sender.send(message.clone());
+        match sender.send(message.clone()) {
+            Ok(_) => (),
+            Err(e) => println!("send sse message failed : {}", e.to_string()),
+        }
     }
     if let Some(sender) = rooms.get(&uuid2) {
-        sender.send(message);
+        match sender.send(message) {
+            Ok(_) => (),
+            Err(e) => println!("send sse message failed : {}", e.to_string()),
+        }
     }
 
     response_ok_with_message(None::<()>, "message created".to_string())
@@ -138,21 +141,15 @@ pub async fn get_lover_messages(
 
 // Green tick a viewed message
 pub async fn green_tick_messages(
-    _: JwtClaims,
+    jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Json(green_tick_messages_request): Json<GreenTickMessagesRequest>,
-    // server: web::Data<Addr<Server>>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    // TODO
-    // Verify if the message you are green ticking is from a discussion that you "own",
-    // and also that it's not your own message
-
-    // todo : see how to handle partial errors for this, maybe errors dont matter for message tick
-
     data_access_layer::message_dal::green_tick_messages(
         &state,
         green_tick_messages_request.love_uuid.clone(),
         green_tick_messages_request.lover_ticked_uuid.clone(),
+        jwt_claims.user_uuid,
     )?;
 
     let message = SseMessage {
@@ -163,16 +160,12 @@ pub async fn green_tick_messages(
     };
 
     let rooms = state.txs.lock().unwrap();
-    println!("rooms {:?}", rooms);
-    println!(
-        "finding {:?}",
-        green_tick_messages_request.lover_ticked_uuid
-    );
     if let Some(sender) = rooms.get(&green_tick_messages_request.lover_ticked_uuid) {
         println!("Sending a sse message : {:?} ", message.data);
-        sender.send(message);
-    } else {
-        println!("couldnt find people in room")
+        match sender.send(message) {
+            Ok(_) => (),
+            Err(e) => println!("send sse message failed : {}", e.to_string()),
+        }
     }
 
     response_ok(None::<()>)
