@@ -3,7 +3,7 @@ use crate::{data_access_layer, AppState};
 use axum::{extract::State, http::Request, middleware::Next, response::Response};
 use std::sync::Arc;
 
-pub async fn record_trace<B: std::fmt::Debug>(
+pub async fn record_trace<B>(
     State(state): State<Arc<AppState>>,
     request: Request<B>,
     next: Next<B>,

@@ -34,6 +34,7 @@ use constants::constants::DATABASE_NAME;
 // }
 
 use axum::{
+    extract::FromRef,
     http,
     http::{HeaderValue, Method, StatusCode},
     middleware,
@@ -58,6 +59,12 @@ pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
     txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
 }
+
+// impl FromRef<AppState> for Pool<SqliteConnectionManager> {
+//     fn from_ref(input: &AppState) -> Self {
+//         input.connection.clone()
+//     }
+// }
 
 impl AppState {
     fn new() -> AppState {

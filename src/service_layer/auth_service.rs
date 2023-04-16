@@ -6,7 +6,7 @@ use argon2::{
 use axum::{
     async_trait,
     extract::State,
-    extract::{FromRequestParts, TypedHeader},
+    extract::{FromRef, FromRequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},
@@ -191,19 +191,17 @@ impl IntoResponse for AuthError {
 }
 
 #[async_trait]
-impl<S> FromRequestParts<S> for JwtClaims
-where
-    S: Send + Sync,
-{
+impl FromRequestParts<Arc<AppState>> for JwtClaims {
     type Rejection = AuthError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        // Extract the token from the authorization header
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &Arc<AppState>,
+    ) -> Result<Self, Self::Rejection> {
         let TypedHeader(Authorization(bearer)) = parts
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
             .map_err(|_| AuthError::InvalidToken)?;
-        // Decode the user data
         let token_data = decode::<JwtClaims>(
             bearer.token(),
             &DecodingKey::from_secret(KEY_JWT),
@@ -211,7 +209,16 @@ where
         )
         .map_err(|_| AuthError::InvalidToken)?;
 
-        // TODO : update user last seen
+        match data_access_layer::user_dal::update_user_last_seen(
+            &state,
+            token_data.claims.user_uuid.clone(),
+        ) {
+            Ok(_) => (),
+            Err(e) => {
+                println!("Error updating user last seen in authorization : {:?}", e);
+            }
+        }
+
         Ok(token_data.claims)
     }
 }
