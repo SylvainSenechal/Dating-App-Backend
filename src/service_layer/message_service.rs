@@ -1,8 +1,7 @@
+use crate::data_access_layer::message_dal::Message;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::auth_service::JwtClaims;
-// use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
-use crate::data_access_layer::message_dal::Message;
 use crate::service_layer::sse_service::{MessageData, SseMessage, SseMessageType};
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
 use crate::{data_access_layer, AppState};
