@@ -88,13 +88,13 @@ pub async fn create_message(
     if let Some(sender) = rooms.get(&uuid1) {
         match sender.send(message.clone()) {
             Ok(_) => (),
-            Err(e) => println!("send sse message failed : {}", e.to_string()),
+            Err(e) => println!("send sse message failed : {}", e),
         }
     }
     if let Some(sender) = rooms.get(&uuid2) {
         match sender.send(message) {
             Ok(_) => (),
-            Err(e) => println!("send sse message failed : {}", e.to_string()),
+            Err(e) => println!("send sse message failed : {}", e),
         }
     }
 
@@ -163,7 +163,7 @@ pub async fn green_tick_messages(
         println!("Sending a sse message : {:?} ", message.data);
         match sender.send(message) {
             Ok(_) => (),
-            Err(e) => println!("send sse message failed : {}", e.to_string()),
+            Err(e) => println!("send sse message failed : {}", e),
         }
     }
 

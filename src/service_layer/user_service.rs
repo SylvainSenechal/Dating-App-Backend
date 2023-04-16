@@ -59,7 +59,7 @@ pub async fn create_user(
     Json(mut create_user_request): Json<CreateUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_user_request);
-    let user = data_access_layer::user_dal::User::get_user_by_email(
+    let user = data_access_layer::user_dal::get_user_by_email(
         &state,
         create_user_request.email.to_string(),
     );
@@ -78,7 +78,7 @@ pub async fn create_user(
     match user {
         Err(SqliteError::NotFound) => {
             create_user_request.password = phc_string;
-            data_access_layer::user_dal::User::create_user(&state, create_user_request)?;
+            data_access_layer::user_dal::create_user(&state, create_user_request)?;
             response_ok_with_message(None::<()>, "user created".to_string())
         }
         Ok(_) => Err(ServiceError::UserAlreadyExist),
@@ -94,7 +94,7 @@ pub async fn get_user(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::User::get_user_by_uuid(&state, user_uuid)?;
+    let user_found = data_access_layer::user_dal::get_user_by_uuid(&state, user_uuid)?;
     response_ok(Some(user_found))
 }
 
@@ -106,7 +106,7 @@ pub async fn delete_user(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    data_access_layer::user_dal::User::delete_user_by_uuid(&state, user_uuid)?;
+    data_access_layer::user_dal::delete_user_by_uuid(&state, user_uuid)?;
     response_ok_with_message(None::<()>, "user deleted successfully".to_string())
 }
 
@@ -147,7 +147,7 @@ pub async fn update_user(
             "longitude should be between -180 and +180".to_string(),
         ));
     }
-    data_access_layer::user_dal::User::update_user_infos(&state, update_user_request)?;
+    data_access_layer::user_dal::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
 
@@ -155,14 +155,13 @@ pub async fn find_lover(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
 ) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
-    let user =
-        data_access_layer::user_dal::User::get_user_by_uuid(&state, jwt_claims.user_uuid.clone());
+    let user = data_access_layer::user_dal::get_user_by_uuid(&state, jwt_claims.user_uuid.clone());
     let user = match user {
         Ok(user) => user,
         Err(err) => return Err(ServiceError::SqliteError(err)),
     };
 
-    let potential_lover = data_access_layer::user_dal::User::find_love_target(
+    let potential_lover = data_access_layer::user_dal::find_love_target(
         &state,
         jwt_claims.user_uuid,
         user.looking_for,
@@ -206,14 +205,14 @@ pub async fn swipe_user(
         .unwrap()
         .execute("BEGIN TRANSACTION", [])
         .map_err(transaction_error)?;
-    match data_access_layer::user_dal::User::swipe_user(
+    match data_access_layer::user_dal::swipe_user(
         &state,
         jwt_claims.user_uuid.clone(),
         swipe_user_request.swiped_uuid.clone(),
         u8::from(swipe_user_request.love),
     ) {
         Ok(()) => {
-            match data_access_layer::user_dal::User::check_mutual_love(
+            match data_access_layer::user_dal::check_mutual_love(
                 &state,
                 jwt_claims.user_uuid.clone(),
                 swipe_user_request.swiped_uuid.clone(),

@@ -60,7 +60,7 @@ pub async fn login(
     Json(login_user): Json<UserLoginRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<LoginResponse>>), AuthError> {
     println!("login {:?}", login_user);
-    let user_found = data_access_layer::user_dal::User::get_user_password_by_email(
+    let user_found = data_access_layer::user_dal::get_user_password_by_email(
         &state,
         login_user.email.to_string(),
     );
@@ -86,7 +86,7 @@ pub async fn login(
                     };
                     let my_refresh_claims = JwtClaims {
                         user_uuid: user_uuid,
-                        private_user_uuid: private_user_uuid.clone(),
+                        private_user_uuid: private_user_uuid,
                         exp: SystemTime::now()
                             .duration_since(UNIX_EPOCH)
                             .expect("failed getting current timestamp")

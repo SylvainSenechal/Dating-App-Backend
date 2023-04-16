@@ -22,8 +22,7 @@ pub async fn loved_count(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count =
-        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_uuid, 1)?;
+    let swiped_count = data_access_layer::user_dal::swiped_count(&state, jwt_claims.user_uuid, 1)?;
     response_ok(Some(swiped_count))
 }
 
@@ -36,8 +35,7 @@ pub async fn rejected_count(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count =
-        data_access_layer::user_dal::User::swiped_count(&state, jwt_claims.user_uuid, 0)?;
+    let swiped_count = data_access_layer::user_dal::swiped_count(&state, jwt_claims.user_uuid, 0)?;
     response_ok(Some(swiped_count))
 }
 
@@ -50,8 +48,7 @@ pub async fn loving_count(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count =
-        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_uuid, 1)?;
+    let swiped_count = data_access_layer::user_dal::swiping_count(&state, jwt_claims.user_uuid, 1)?;
     response_ok(Some(swiped_count))
 }
 
@@ -64,8 +61,7 @@ pub async fn rejecting_count(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let swiped_count =
-        data_access_layer::user_dal::User::swiping_count(&state, jwt_claims.user_uuid, 0)?;
+    let swiped_count = data_access_layer::user_dal::swiping_count(&state, jwt_claims.user_uuid, 0)?;
     response_ok(Some(swiped_count))
 }
 

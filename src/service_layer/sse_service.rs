@@ -1,27 +1,13 @@
 use crate::{data_access_layer, AppState};
-use axum::Json;
 use axum::{
-    extract::Query,
     extract::{Path, State},
-    http::{HeaderValue, Method},
     response::sse::{Event, Sse},
-    routing::get,
-    Router,
 };
-use futures::stream::{self, Stream};
-use r2d2::Pool;
-use rusqlite::Connection;
-use serde::Deserialize;
+use futures::stream::Stream;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
-use std::net::SocketAddr;
+use std::convert::Infallible;
 use std::sync::Arc;
-use std::sync::Mutex;
-use std::{convert::Infallible, path::PathBuf, time::Duration};
 use tokio::sync::broadcast;
-use tower_http::cors::Any;
-use tower_http::cors::CorsLayer;
-use tower_http::{services::ServeDir, trace::TraceLayer};
 
 #[derive(Serialize, Clone)]
 pub struct SseMessage {
@@ -65,7 +51,7 @@ pub async fn server_side_event_handler(
 
     // todo : return error
     let user_uuid =
-        data_access_layer::user_dal::User::get_user_uuid_by_private_uuid(&state, user_private_uuid)
+        data_access_layer::user_dal::get_user_uuid_by_private_uuid(&state, user_private_uuid)
             .unwrap();
 
     let (tx, mut red) = broadcast::channel::<SseMessage>(1);
