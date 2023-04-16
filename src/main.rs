@@ -36,10 +36,10 @@ use constants::constants::DATABASE_NAME;
 use axum::{
     http,
     http::{HeaderValue, Method, StatusCode},
+    middleware,
     routing::{delete, get, post, put},
     Json, Router,
 };
-
 use r2d2::Pool;
 use std::collections::HashMap;
 use std::net::SocketAddr;
@@ -110,6 +110,9 @@ async fn main() {
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
+
+    let appState = Arc::new(AppState::new());
+
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users/:user_uuid", get(get_user))
@@ -178,6 +181,10 @@ async fn main() {
             get(service_layer::sse_service::server_side_event_handler),
         )
         .fallback(p404)
+        .layer(middleware::from_fn_with_state(
+            appState.clone(),
+            service_layer::trace_service::record_trace,
+        ))
         .layer(
             CorsLayer::new()
                 // .allow_origin(Any)
@@ -196,7 +203,7 @@ async fn main() {
                     Method::OPTIONS,
                 ]),
         )
-        .with_state(Arc::new(AppState::new()));
+        .with_state(appState);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("listening on {}", addr);
@@ -212,54 +219,3 @@ async fn p404() -> (StatusCode, Json<String>) {
         Json("Four O Four : Nothing to see here dud 👀".to_string()),
     )
 }
-
-// #[actix_web::main]
-// async fn main() -> std::io::Result<()> {
-//     // std::env::set_var("RUST_LOG", "actix_web=info");
-//     std::env::set_var(
-//         "RUST_LOG",
-//         "actix_web=debug,actix_server=info,actix_web=info",
-//     );
-//     // env_logger::init();
-
-//     let server = service_layer::websocket_service::Server {
-//         sessions: HashMap::new(),
-//         love_chat_rooms: HashMap::new(),
-//     }
-//     .start();
-
-//     HttpServer::new(move || {
-//         let cors = Cors::default()
-//             .allowed_origin("http://localhost:3000")
-//             .allowed_methods(vec!["GET", "POST", "PUT", "DELETE"])
-//             .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-//             .allowed_header(header::CONTENT_TYPE)
-//             .allowed_header("trace")
-//             .max_age(3600);
-
-//         App::new()
-//             .wrap(cors)
-//             .wrap_fn(|req, srv| {
-//                 if let Some(db) = req.app_data::<web::Data<AppState>>() {
-//                     let mut trace = TraceRequest {
-//                         trace_id: None::<usize>,
-//                         ip: req.peer_addr(),
-//                         method: req.method().as_str(),
-//                         path: req.path(),
-//                         query_string: req.query_string(),
-//                         data: None,
-//                     };
-//                     if let Some(trace_id) = req.headers().get("Trace") {
-//                         let trace_id = trace_id
-//                             .to_str()
-//                             .expect("header to str failed")
-//                             .parse::<usize>()
-//                             .expect("str to usize failed");
-//                         trace.trace_id = Some(trace_id);
-//                     }
-//                     data_access_layer::trace_dal::create_trace(db, trace)
-//                         .expect("dal create trace failed")
-//                 }
-
-//                 srv.call(req).map(|res| res)
-//             })

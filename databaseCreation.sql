@@ -86,11 +86,9 @@ CREATE TABLE IF NOT EXISTS Traces (
     trace_uuid BLOB NOT NULL,
     trace_id INTEGER,
     datetime TEXT,
-    ip TEXT,
-    path TEXT,
     method TEXT,
-    query_string TEXT,
-    data TEXT
+    uri TEXT,
+    user_agent TEXT
 )
 -- CREATE TABLE IF NOT EXISTS Feedbacks (
 --     feedback_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,

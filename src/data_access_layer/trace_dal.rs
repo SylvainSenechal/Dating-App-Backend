@@ -7,42 +7,38 @@ use serde::Serialize;
 use std::sync::Arc;
 use uuid::Uuid;
 
-pub struct TraceRequest<'a> {
+#[derive(Debug, Clone)]
+pub struct TraceRequest {
     pub trace_id: Option<usize>,
-    pub ip: Option<std::net::SocketAddr>,
-    pub method: &'a str, // TODO : why no string
-    pub path: &'a str,
-    pub query_string: &'a str,
-    pub data: Option<&'a str>,
+    pub method: String,
+    pub uri: String,
+    pub user_agent: Option<String>,
 }
 
 #[derive(Serialize)]
-// todo : see optional fields
 pub struct GetTracesResponse {
     trace_id: Option<usize>,
     datetime: Option<String>,
     // pub ip: Option<std::net::SocketAddr>, TODO : Decide which fields to publicly show
     method: Option<String>,
-    path: Option<String>,
-    query_string: Option<String>,
+    uri: Option<String>,
+    user_agent: Option<String>,
     // data: Option<String>,
 }
 
 pub fn create_trace(db: &Arc<AppState>, trace: TraceRequest) -> Result<(), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("INSERT INTO Traces (trace_uuid, trace_id, datetime, ip, method, path, query_string, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+        .prepare_cached("INSERT INTO Traces (trace_uuid, trace_id, datetime, method, uri, user_agent) VALUES (?, ?, ?, ?, ?, ?)")
         .map_err(map_sqlite_error)?;
     statement
         .execute(params![
             Uuid::now_v7().to_string(),
             trace.trace_id,
             format!("{:?}", chrono::offset::Utc::now()),
-            trace.ip.expect("should have ip").to_string(), // TODO avoid expect here
             trace.method,
-            trace.path,
-            trace.query_string,
-            trace.data
+            trace.uri,
+            trace.user_agent
         ])
         .map_err(map_sqlite_error)?;
 
@@ -61,8 +57,8 @@ pub fn get_traces(db: &Arc<AppState>) -> Result<Vec<GetTracesResponse>, SqliteEr
                 trace_id: row.get("trace_id")?,
                 datetime: row.get("datetime")?,
                 method: row.get("method")?,
-                path: row.get("path")?,
-                query_string: row.get("query_string")?,
+                uri: row.get("uri")?,
+                user_agent: row.get("user_agent")?,
             })
         })
         .map_err(map_sqlite_error)?;
