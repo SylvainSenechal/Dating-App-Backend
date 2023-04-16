@@ -24,7 +24,7 @@ pub enum ServiceError {
     LoginError,
     JwtError,
     ForbiddenQuery,
-    SqlValueNotAccepted(String, String), // (Value, Reason)
+    ValueNotAccepted(String, String), // (Value, Reason)
     TransactionError,
     UnknownServiceError,
 }
@@ -46,7 +46,7 @@ impl ServiceError {
             Self::LoginError => "Login error".to_string(),
             Self::JwtError => "Jwt internal error".to_string(),
             Self::ForbiddenQuery => "Query forbidden error".to_string(),
-            Self::SqlValueNotAccepted(value, reason) => "SQL provided value not accepted, value = "
+            Self::ValueNotAccepted(value, reason) => "SQL provided value not accepted, value = "
                 .to_string()
                 .add(value)
                 .add(" reason : ")
@@ -66,7 +66,7 @@ impl ServiceError {
             Self::LoginError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::JwtError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::ForbiddenQuery => StatusCode::FORBIDDEN,
-            Self::SqlValueNotAccepted(_, _) => StatusCode::FORBIDDEN,
+            Self::ValueNotAccepted(_, _) => StatusCode::FORBIDDEN,
             Self::TransactionError => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UnknownServiceError => StatusCode::INTERNAL_SERVER_ERROR,
         }

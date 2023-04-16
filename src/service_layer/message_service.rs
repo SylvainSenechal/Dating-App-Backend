@@ -3,7 +3,7 @@ use crate::my_errors::sqlite_errors::SqliteError;
 use crate::service_layer::auth_service::JwtClaims;
 // use crate::service_layer::websocket_service::{ChatMessage, GreenTickMessage, Server};
 use crate::data_access_layer::message_dal::Message;
-use crate::service_layer::sse_service::SseMessage;
+use crate::service_layer::sse_service::{MessageData, SseMessage, SseMessageType};
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
 use crate::{data_access_layer, AppState};
 use axum::{
@@ -24,13 +24,8 @@ pub struct CreateMessageRequest {
 
 #[derive(Deserialize)]
 pub struct GreenTickMessagesRequest {
-    pub messages: Vec<GreenTickMessageRequest>,
-}
-
-#[derive(Deserialize)]
-pub struct GreenTickMessageRequest {
-    pub message_uuid: String,
     pub love_uuid: String,
+    pub lover_ticked_uuid: String,
 }
 
 // Post a message by poster_id in the love_id relation
@@ -45,14 +40,14 @@ pub async fn create_message(
         return Err(ServiceError::ForbiddenQuery);
     }
     if create_message_request.message.is_empty() {
-        return Err(ServiceError::SqlValueNotAccepted(
+        return Err(ServiceError::ValueNotAccepted(
             create_message_request.message,
             "Empty messages not accepted".to_string(),
         ));
     }
     if create_message_request.message.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
-        return Err(ServiceError::SqlValueNotAccepted(
+        return Err(ServiceError::ValueNotAccepted(
             create_message_request.message,
             "Message content string is too long".to_string(),
         ));
@@ -78,16 +73,29 @@ pub async fn create_message(
     )?;
     println!("message {} created", uuid_message);
 
-    let message = SseMessage::ChatMessage {
-        uuid_love_room: create_message_request.love_uuid,
-        uuid_message: uuid_message,
-        message: create_message_request.message.to_string(),
-        poster_uuid: create_message_request.poster_uuid,
-        creation_datetime: creation_datetime,
+    let message = SseMessage {
+        message_type: SseMessageType::ChatMessage,
+        data: MessageData::ChatMessage {
+            uuid_love_room: create_message_request.love_uuid,
+            uuid_message: uuid_message.clone(),
+            message: create_message_request.message.to_string(),
+            poster_uuid: create_message_request.poster_uuid,
+            creation_datetime: creation_datetime,
+        },
     };
 
+    let (uuid1, uuid2) =
+        data_access_layer::message_dal::get_lovers_uuids_from_message_uuid(&state, uuid_message)?;
+
     // todo : handle result ?
-    state.txs.lock().unwrap().get(&0).unwrap().send(message);
+    let rooms = state.txs.lock().unwrap();
+    if let Some(sender) = rooms.get(&uuid1) {
+        sender.send(message.clone());
+    }
+    if let Some(sender) = rooms.get(&uuid2) {
+        sender.send(message);
+    }
+
     response_ok_with_message(None::<()>, "message created".to_string())
 }
 
@@ -140,29 +148,31 @@ pub async fn green_tick_messages(
     // and also that it's not your own message
 
     // todo : see how to handle partial errors for this, maybe errors dont matter for message tick
-    for message in &green_tick_messages_request.messages {
-        match data_access_layer::message_dal::green_tick_message(
-            &state,
-            message.message_uuid.clone(),
-        ) {
-            Ok(()) => {
-                // server.do_send(GreenTickMessage {
-                //     id_love_room: message.love_id,
-                //     id_message: message.message_id,
-                // });
 
-                // let oo = state
-                // .txs
-                // .lock()
-                // .unwrap()
-                // .get(&0)
-                // .unwrap()
-                // .send("proute".to_owned()); // .send("proute".to_owned());
-                // println!("SSSS {:?}", oo);
-            }
-            Err(err) => return Err(ServiceError::SqliteError(err)),
-            // !!!!! TODO : For every transaction, if error, unlock db by ending transaction..
-        }
+    data_access_layer::message_dal::green_tick_messages(
+        &state,
+        green_tick_messages_request.love_uuid.clone(),
+        green_tick_messages_request.lover_ticked_uuid.clone(),
+    )?;
+
+    let message = SseMessage {
+        message_type: SseMessageType::GreenTickMessage,
+        data: MessageData::GreenTickMessage {
+            uuid_love_room: green_tick_messages_request.love_uuid,
+        },
+    };
+
+    let rooms = state.txs.lock().unwrap();
+    println!("rooms {:?}", rooms);
+    println!(
+        "finding {:?}",
+        green_tick_messages_request.lover_ticked_uuid
+    );
+    if let Some(sender) = rooms.get(&green_tick_messages_request.lover_ticked_uuid) {
+        println!("Sending a sse message : {:?} ", message.data);
+        sender.send(message);
+    } else {
+        println!("couldnt find people in room")
     }
 
     response_ok(None::<()>)

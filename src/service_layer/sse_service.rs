@@ -2,7 +2,7 @@ use crate::{data_access_layer, AppState};
 use axum::Json;
 use axum::{
     extract::Query,
-    extract::State,
+    extract::{Path, State},
     http::{HeaderValue, Method},
     response::sse::{Event, Sse},
     routing::get,
@@ -23,8 +23,20 @@ use tower_http::cors::Any;
 use tower_http::cors::CorsLayer;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 
+#[derive(Serialize, Clone)]
+pub struct SseMessage {
+    pub message_type: SseMessageType,
+    pub data: MessageData,
+}
+
+#[derive(Serialize, Clone)]
+pub enum SseMessageType {
+    ChatMessage,
+    GreenTickMessage,
+}
+
 #[derive(Serialize, Clone, Debug)]
-pub enum SseMessage {
+pub enum MessageData {
     ChatMessage {
         uuid_love_room: String,
         uuid_message: String,
@@ -32,10 +44,14 @@ pub enum SseMessage {
         poster_uuid: String,
         creation_datetime: String,
     },
+    GreenTickMessage {
+        uuid_love_room: String,
+    },
 }
 
 pub async fn server_side_event_handler(
     State(state): State<Arc<AppState>>,
+    Path(user_private_uuid): Path<String>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
     struct Guard {
         // whatever state you need here
@@ -47,17 +63,18 @@ pub async fn server_side_event_handler(
         }
     }
 
+    // todo : return error
+    let user_uuid =
+        data_access_layer::user_dal::User::get_user_uuid_by_private_uuid(&state, user_private_uuid)
+            .unwrap();
+
     let (tx, mut red) = broadcast::channel::<SseMessage>(1);
-    // state.txs.lock().unwrap().insert(pagination.id, tx);
-    state.txs.lock().unwrap().insert(0, tx);
+    state.txs.lock().unwrap().insert(user_uuid, tx);
 
     let stream = async_stream::stream! {
         // let _guard = Guard {};
-        // let mut rx = state.tx.subscribe();
         while let Ok(msg) = red.recv().await {
             println!("sending");
-            // yield Ok(Event::default().data(msg))
-            // yield Ok(Event::default().event("update").data(msg))
             yield Ok(Event::default().event("update").json_data(msg).unwrap())
         }
     };

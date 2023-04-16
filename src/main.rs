@@ -91,11 +91,10 @@ use r2d2_sqlite::SqliteConnectionManager;
 
 use crate::service_layer::sse_service::SseMessage;
 use service_layer::user_service::{create_user, delete_user, get_user, update_user};
-use uuid::Uuid;
 
 pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
-    txs: Mutex<HashMap<usize, broadcast::Sender<SseMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
+    txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
 }
 
 impl AppState {
@@ -191,7 +190,7 @@ async fn main() {
             post(service_layer::auth_service::token_refresh),
         )
         .route(
-            "/server_side_event",
+            "/server_side_event/:user_private_uuid",
             get(service_layer::sse_service::server_side_event_handler),
         )
         .fallback(p404)

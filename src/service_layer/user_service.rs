@@ -8,12 +8,15 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
+use crate::{
+    constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST},
+    my_errors::service_errors,
+};
 use crate::{data_access_layer, AppState}; // todo : refactor into dto/dal logic
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -127,14 +130,23 @@ pub async fn update_user(
     }
     if update_user_request.description.chars().count() > 1000 {
         // Warning : Be carefull when counting string chars(), this needs tests..
-        return Err(ServiceError::SqlValueNotAccepted(
+        return Err(ServiceError::ValueNotAccepted(
             update_user_request.description,
             "Description string is too long".to_string(),
         ));
     }
-    // let update_status =
-    //     data_access_layer::user_dal::User::update_user_infos(&state, update_user_request);
-    // let update_status = data_access_layer::user_dal::User::update_user_infos(&state, update_user_request)?;
+    if update_user_request.latitude < -90.0 || update_user_request.latitude > 90.0 {
+        return Err(ServiceError::ValueNotAccepted(
+            update_user_request.latitude.to_string(),
+            "latitude should be between -90 and +90".to_string(),
+        ));
+    }
+    if update_user_request.longitude < -180.0 || update_user_request.longitude > 180.0 {
+        return Err(ServiceError::ValueNotAccepted(
+            update_user_request.longitude.to_string(),
+            "longitude should be between -180 and +180".to_string(),
+        ));
+    }
     data_access_layer::user_dal::User::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }

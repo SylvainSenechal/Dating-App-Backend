@@ -147,14 +147,35 @@ pub fn get_lover_messages(
     Ok(messages)
 }
 
-pub fn green_tick_message(db: &Arc<AppState>, message_uuid: String) -> Result<(), SqliteError> {
+// Get the 2 uuids of the lover who shared a message
+pub fn get_lovers_uuids_from_message_uuid(
+    db: &Arc<AppState>,
+    message_uuid: String,
+) -> Result<(String, String), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("UPDATE Messages SET seen = ? WHERE message_uuid = ?")
+        .prepare_cached("SELECT lover1, lover2 FROM Lovers JOIN Messages ON Lovers.love_uuid = Messages.love_uuid WHERE message_uuid = ?")
         .map_err(map_sqlite_error)?;
 
     statement
-        .execute(params![1, message_uuid])
+        .query_row(params![message_uuid], |row| {
+            Ok((row.get("lover1")?, row.get("lover2")?))
+        })
+        .map_err(map_sqlite_error)
+}
+
+pub fn green_tick_messages(
+    db: &Arc<AppState>,
+    love_uuid: String,
+    lover_ticked_uuid: String,
+) -> Result<(), SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
+        .prepare_cached("UPDATE Messages SET seen = ? WHERE love_uuid = ? AND poster_uuid = ?")
+        .map_err(map_sqlite_error)?;
+
+    statement
+        .execute(params![1, love_uuid, lover_ticked_uuid])
         .map_err(map_sqlite_error)?;
     Ok(())
 }

@@ -2,6 +2,7 @@
 CREATE TABLE IF NOT EXISTS Users (
     user_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     user_uuid BLOB NOT NULL,
+    private_user_uuid BLOB NOT NULL,
     name TEXT NOT NULL,
     password TEXT NOT NULL,
     email TEXT NOT NULL UNIQUE,
@@ -60,7 +61,7 @@ CREATE TABLE IF NOT EXISTS Lovers (
     love_uuid BLOB NOT NULL,
     lover1 BLOB NOT NULL,
     lover2 BLOB NOT NULL,
-    -- When the match just happened, this is to show notificationsgit 
+    -- When the match just happened, this is to show notifications
     seen_by_lover1 INTEGER CHECK (seen_by_lover1 IN (0, 1)) NOT NULL DEFAULT 0,
     seen_by_lover2 INTEGER CHECK (seen_by_lover2 IN (0, 1)) NOT NULL DEFAULT 0,
     FOREIGN KEY(lover1) REFERENCES Users(user_uuid) ON DELETE CASCADE,

@@ -12,6 +12,7 @@ use uuid::Uuid;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct User {
     pub uuid: String,
+    pub private_uuid: String,
     pub name: String,
     pub password: String,
     pub email: String,
@@ -32,10 +33,11 @@ impl User {
     pub fn create_user(db: &Arc<AppState>, user: CreateUserRequest) -> Result<(), SqliteError> {
         let binding = db.connection.get().unwrap();
         let mut statement = binding
-            .prepare_cached("INSERT INTO Users (user_uuid, name, password, email, last_seen, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+            .prepare_cached("INSERT INTO Users (user_uuid, private_user_uuid, name, password, email, last_seen, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
             .map_err(map_sqlite_error)?;
         statement
             .execute(params![
+                Uuid::now_v7().to_string(),
                 Uuid::now_v7().to_string(),
                 user.name,
                 user.password,
@@ -62,6 +64,7 @@ impl User {
             .query_row(params![email], |row| {
                 Ok(User {
                     uuid: row.get("user_uuid")?,
+                    private_uuid: row.get("private_user_uuid")?,
                     name: row.get("name")?,
                     email: row.get("email")?,
                     password: "Have fun with this password bro".to_string(),
@@ -84,7 +87,7 @@ impl User {
     pub fn get_user_password_by_email(
         db: &Arc<AppState>,
         email: String,
-    ) -> Result<(String, String), SqliteError> {
+    ) -> Result<(String, String, String), SqliteError> {
         let binding = db.connection.get().unwrap();
         let mut statement = binding
             .prepare_cached("SELECT * FROM Users WHERE email = ?")
@@ -92,8 +95,26 @@ impl User {
 
         statement
             .query_row(params![email], |row| {
-                Ok((row.get("user_uuid")?, row.get("password")?))
+                Ok((
+                    row.get("user_uuid")?,
+                    row.get("private_user_uuid")?,
+                    row.get("password")?,
+                ))
             })
+            .map_err(map_sqlite_error)
+    }
+
+    pub fn get_user_uuid_by_private_uuid(
+        db: &Arc<AppState>,
+        private_uuid: String,
+    ) -> Result<String, SqliteError> {
+        let binding = db.connection.get().unwrap();
+        let mut statement = binding
+            .prepare_cached("SELECT user_uuid FROM Users WHERE private_user_uuid = ?")
+            .map_err(map_sqlite_error)?;
+
+        statement
+            .query_row(params![private_uuid], |row| Ok(row.get("user_uuid")?))
             .map_err(map_sqlite_error)
     }
 
@@ -107,6 +128,7 @@ impl User {
             .query_row(params![user_uuid], |row| {
                 Ok(User {
                     uuid: row.get("user_uuid")?,
+                    private_uuid: row.get("private_user_uuid")?,
                     name: row.get("name")?,
                     password: "Have fun with this password bro".to_string(),
                     email: row.get("email")?,
@@ -243,6 +265,7 @@ impl User {
                 |row| {
                     Ok(User {
                         uuid: row.get("user_uuid")?,
+                        private_uuid: row.get("private_user_uuid")?,
                         name: row.get("name")?,
                         password: "Have fun with this password bro".to_string(),
                         email: row.get("email")?,
