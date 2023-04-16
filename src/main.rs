@@ -1,5 +1,3 @@
-// use data_access_layer::trace_dal::TraceRequest;
-
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 mod constants;
 mod data_access_layer;
