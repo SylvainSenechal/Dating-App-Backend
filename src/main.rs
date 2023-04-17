@@ -26,13 +26,8 @@ use constants::constants::DATABASE_NAME;
 // todo : check ON DELETE CASCADE
 // TODO : handle sse connection closed
 
-// async fn fake_admin() -> HttpResponse {
-//     println!("Fake admin visited");
-//     HttpResponse::NotFound().body("What are you doing here 👀")
-// }
-
 use axum::{
-    extract::FromRef,
+    extract::{Path, State},
     http,
     http::{HeaderValue, Method, StatusCode},
     middleware,
@@ -40,14 +35,12 @@ use axum::{
     Json, Router,
 };
 use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tokio::sync::broadcast;
 use tower_http::cors::CorsLayer;
-extern crate r2d2;
-extern crate r2d2_sqlite; // todo check "extern" keyword
-use r2d2_sqlite::SqliteConnectionManager;
 
 use crate::service_layer::sse_service::SseMessage;
 use service_layer::user_service::{create_user, delete_user, get_user, update_user};
@@ -55,14 +48,8 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
-    txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>, // TODO : revoir user broadcast, or oneshoot etc ?
+    txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
 }
-
-// impl FromRef<AppState> for Pool<SqliteConnectionManager> {
-//     fn from_ref(input: &AppState) -> Self {
-//         input.connection.clone()
-//     }
-// }
 
 impl AppState {
     fn new() -> AppState {
@@ -116,7 +103,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let appState = Arc::new(AppState::new());
+    let app_state = Arc::new(AppState::new());
 
     let app = Router::new()
         .route("/users", post(create_user))
@@ -187,7 +174,7 @@ async fn main() {
         )
         .fallback(p404)
         .layer(middleware::from_fn_with_state(
-            appState.clone(),
+            app_state.clone(),
             service_layer::trace_service::record_trace,
         ))
         .layer(
@@ -208,7 +195,7 @@ async fn main() {
                     Method::OPTIONS,
                 ]),
         )
-        .with_state(appState);
+        .with_state(app_state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     println!("listening on {}", addr);
@@ -218,7 +205,10 @@ async fn main() {
         .unwrap();
 }
 
-async fn p404() -> (StatusCode, Json<String>) {
+async fn p404(State(state): State<Arc<AppState>>) -> (StatusCode, Json<String>) {
+    let aa = state.txs.lock().unwrap();
+    println!("AAAA {:?}", aa);
+    // println!("YOOO {:?} ", state.txs.lock().unwrap());
     (
         StatusCode::NOT_FOUND,
         Json("Four O Four : Nothing to see here dud 👀".to_string()),

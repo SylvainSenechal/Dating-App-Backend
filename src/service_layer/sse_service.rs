@@ -5,8 +5,8 @@ use axum::{
 };
 use futures::stream::Stream;
 use serde::Serialize;
-use std::convert::Infallible;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, convert::Infallible};
 use tokio::sync::broadcast;
 
 #[derive(Serialize, Clone)]
@@ -35,30 +35,33 @@ pub enum MessageData {
     },
 }
 
+struct Guard<'a> {
+    channels: &'a Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
+    user_uuid: String,
+}
+
+impl Drop for Guard<'_> {
+    fn drop(&mut self) {
+        self.channels.lock().unwrap().remove(&self.user_uuid);
+    }
+}
+
 pub async fn server_side_event_handler(
     State(state): State<Arc<AppState>>,
     Path(user_private_uuid): Path<String>,
 ) -> Sse<impl Stream<Item = Result<Event, Infallible>>> {
-    struct Guard {
-        // whatever state you need here
-    }
-
-    impl Drop for Guard {
-        fn drop(&mut self) {
-            println!("stream closed");
-        }
-    }
-
-    // todo : return error
     let user_uuid =
         data_access_layer::user_dal::get_user_uuid_by_private_uuid(&state, user_private_uuid)
             .unwrap();
 
     let (tx, mut red) = broadcast::channel::<SseMessage>(1);
-    state.txs.lock().unwrap().insert(user_uuid, tx);
-
+    state.txs.lock().unwrap().insert(user_uuid.clone(), tx);
     let stream = async_stream::stream! {
-        // let _guard = Guard {};
+        let _guard = Guard {
+            channels: &state.txs,
+            user_uuid: user_uuid
+        };
+
         while let Ok(msg) = red.recv().await {
             println!("sending");
             yield Ok(Event::default().event("update").json_data(msg).unwrap())

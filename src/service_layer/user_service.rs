@@ -110,15 +110,6 @@ pub async fn delete_user(
     response_ok_with_message(None::<()>, "user deleted successfully".to_string())
 }
 
-// This route is useless and dangerous..
-// pub async fn get_users(db: web::Data<AppState>) -> actixResult<HttpResponse, ServiceError> {
-//     let users_found = data_access_layer::user_dal::User::get_users(&db);
-//     match users_found {
-//         Ok(users) => Ok(HttpResponse::Ok().json(users)),
-//         Err(err) => Err(ServiceError::SqliteError(err)),
-//     }
-// }
-
 pub async fn update_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
@@ -147,6 +138,7 @@ pub async fn update_user(
             "longitude should be between -180 and +180".to_string(),
         ));
     }
+    // todo : check updated email is not taken
     data_access_layer::user_dal::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
