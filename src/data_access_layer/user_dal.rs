@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::service_layer::user_service::{CreateUserRequest, UpdateUserInfosReq};
+use crate::requests::requests;
 use crate::AppState;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -28,7 +28,10 @@ pub struct User {
     pub description: String,
 }
 
-pub fn create_user(db: &Arc<AppState>, user: CreateUserRequest) -> Result<(), SqliteError> {
+pub fn create_user(
+    db: &Arc<AppState>,
+    user: requests::CreateUserRequest,
+) -> Result<(), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
             .prepare_cached("INSERT INTO Users (user_uuid, private_user_uuid, name, password, email, last_seen, age, latitude, longitude, gender, looking_for) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
@@ -158,7 +161,10 @@ pub fn delete_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<(), 
     Ok(())
 }
 
-pub fn update_user_infos(db: &Arc<AppState>, user: UpdateUserInfosReq) -> Result<(), SqliteError> {
+pub fn update_user_infos(
+    db: &Arc<AppState>,
+    user: requests::UpdateUserInfosReq,
+) -> Result<(), SqliteError> {
     println!("{:?}", user);
     let binding = db.connection.get().unwrap();
     let mut statement = binding

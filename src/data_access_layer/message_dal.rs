@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
-use crate::service_layer::message_service::CreateMessageRequest;
+use crate::requests::requests;
 use crate::AppState;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -20,7 +20,7 @@ pub struct Message {
 
 pub fn create_message(
     db: &Arc<AppState>,
-    request: &CreateMessageRequest,
+    request: &requests::CreateMessageRequest,
     creation_datetime: &String,
 ) -> Result<String, SqliteError> {
     let uuid_message = Uuid::now_v7().to_string();

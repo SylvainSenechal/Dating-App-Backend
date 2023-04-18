@@ -2,6 +2,8 @@
 mod constants;
 mod data_access_layer;
 mod my_errors;
+mod requests;
+mod responses;
 mod service_layer;
 mod utilities;
 
@@ -10,7 +12,6 @@ use constants::constants::DATABASE_NAME;
 // TODO : Show when swiping if the user liked me already
 // TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
 // TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
-// TODO : Gerer OPTIONS request
 // TODO : rework routing into one liner
 // TODO : Lover do not return password
 // TODO : Clean struct into Request/Response/DTO folder
@@ -24,10 +25,10 @@ use constants::constants::DATABASE_NAME;
 // todo : add a suggestions/bugs table / fonctionnalite send developer feedback
 // todo : retester les error messages
 // todo : check ON DELETE CASCADE
-// TODO : handle sse connection closed
+// todo : check enabling foreign key constraint
+// todo : voir sse qui spam requetes
 
 use axum::{
-    extract::{Path, State},
     http,
     http::{HeaderValue, Method, StatusCode},
     middleware,
@@ -72,16 +73,16 @@ impl AppState {
         let pragma3 = connection
             .execute("PRAGMA cache_size = 1000000;", [])
             .expect("Error pragma cache_size set");
-        let pragma4 = connection
-            .execute("PRAGMA foreign_keys = ON;", [])
-            .expect("Error pragma foreign keys = On");
+        // let pragma4 = connection
+        //     .execute("PRAGMA foreign_keys = ON;", [])
+        //     .expect("Error pragma foreign keys = On");
         // let pragma4 = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
         // let pragma5 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
 
         println!("pragma 1 {:?}", pragma1);
         println!("pragma 2 {:?}", pragma2);
         println!("pragma 3 {:?}", pragma3);
-        println!("pragma 4 {:?}", pragma4);
+        // println!("pragma 4 {:?}", pragma4);
 
         AppState {
             connection: pool,
@@ -205,10 +206,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn p404(State(state): State<Arc<AppState>>) -> (StatusCode, Json<String>) {
-    let aa = state.txs.lock().unwrap();
-    println!("AAAA {:?}", aa);
-    // println!("YOOO {:?} ", state.txs.lock().unwrap());
+async fn p404() -> (StatusCode, Json<String>) {
     (
         StatusCode::NOT_FOUND,
         Json("Four O Four : Nothing to see here dud 👀".to_string()),

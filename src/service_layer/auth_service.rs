@@ -6,7 +6,7 @@ use argon2::{
 use axum::{
     async_trait,
     extract::State,
-    extract::{FromRef, FromRequestParts, TypedHeader},
+    extract::{FromRequestParts, TypedHeader},
     headers::{authorization::Bearer, Authorization},
     http::{request::Parts, StatusCode},
     response::{IntoResponse, Response},

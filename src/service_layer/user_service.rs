@@ -5,58 +5,20 @@ use axum::{
     Json,
 };
 use rand::thread_rng;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
+use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
-use crate::{
-    constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST},
-    my_errors::service_errors,
-};
 use crate::{data_access_layer, AppState}; // todo : refactor into dto/dal logic
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateUserRequest {
-    pub name: String,
-    pub password: String,
-    pub email: String,
-    pub age: u8,
-    pub latitude: f32,
-    pub longitude: f32,
-    pub gender: String, // TODO add enum constraint
-    pub looking_for: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SwipeUserRequest {
-    pub swiped_uuid: String,
-    pub love: bool, // boolean for sqlite, 0 = dont love, 1 - love
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct UpdateUserInfosReq {
-    pub uuid: String,
-    pub name: String,
-    pub password: String,
-    pub email: String,
-    pub age: u8,
-    pub latitude: f32,
-    pub longitude: f32,
-    pub gender: String,
-    pub looking_for: String,
-    pub search_radius: u16,
-    pub looking_for_age_min: u8,
-    pub looking_for_age_max: u8,
-    pub description: String,
-}
 
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
-    Json(mut create_user_request): Json<CreateUserRequest>,
+    Json(mut create_user_request): Json<requests::CreateUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_user_request);
     let user = data_access_layer::user_dal::get_user_by_email(
@@ -114,7 +76,7 @@ pub async fn update_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Path(user_uuid): Path<String>,
-    Json(update_user_request): Json<UpdateUserInfosReq>,
+    Json(update_user_request): Json<requests::UpdateUserInfosReq>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
@@ -139,6 +101,7 @@ pub async fn update_user(
         ));
     }
     // todo : check updated email is not taken
+    // check looking for gender / gender
     data_access_layer::user_dal::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
@@ -182,7 +145,7 @@ pub async fn find_lover(
 pub async fn swipe_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Json(swipe_user_request): Json<SwipeUserRequest>,
+    Json(swipe_user_request): Json<requests::SwipeUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", swipe_user_request);
     if jwt_claims.user_uuid == swipe_user_request.swiped_uuid {

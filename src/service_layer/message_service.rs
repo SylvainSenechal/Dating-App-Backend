@@ -1,6 +1,7 @@
 use crate::data_access_layer::message_dal::Message;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::service_layer::sse_service::{MessageData, SseMessage, SseMessageType};
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
@@ -11,27 +12,13 @@ use axum::{
     Json,
 };
 use chrono;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-
-#[derive(Serialize, Deserialize, Debug, Default)]
-pub struct CreateMessageRequest {
-    pub message: String,
-    pub poster_uuid: String,
-    pub love_uuid: String,
-}
-
-#[derive(Deserialize)]
-pub struct GreenTickMessagesRequest {
-    pub love_uuid: String,
-    pub lover_ticked_uuid: String,
-}
 
 // Post a message by poster_id in the love_id relation
 pub async fn create_message(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Json(create_message_request): Json<CreateMessageRequest>,
+    Json(create_message_request): Json<requests::CreateMessageRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     println!("{:?}", create_message_request);
     if jwt_claims.user_uuid != create_message_request.poster_uuid {
@@ -142,7 +129,7 @@ pub async fn get_lover_messages(
 pub async fn green_tick_messages(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-    Json(green_tick_messages_request): Json<GreenTickMessagesRequest>,
+    Json(green_tick_messages_request): Json<requests::GreenTickMessagesRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     data_access_layer::message_dal::green_tick_messages(
         &state,

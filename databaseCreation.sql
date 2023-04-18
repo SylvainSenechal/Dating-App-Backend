@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS Users (
         longitude >= -180
         AND longitude <= 180
     ) NOT NULL,
-    gender TEXT CHECK (gender IN ('male', 'female')) NOT NULL,
-    looking_for TEXT CHECK (looking_for IN ('male', 'female')) NOT NULL,
+    gender TEXT CHECK (gender IN ('male', 'female', 'any')) NOT NULL,
+    looking_for TEXT CHECK (looking_for IN ('male', 'female', 'any')) NOT NULL,
     search_radius INTEGER CHECK (
         search_radius > 0
         AND search_radius < 65535
