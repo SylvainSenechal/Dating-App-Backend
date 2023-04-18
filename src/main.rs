@@ -17,10 +17,7 @@ use constants::constants::DATABASE_NAME;
 // TODO : Clean struct into Request/Response/DTO folder
 // TODO : red dot sur activite swutcher nb new match
 // TODO : indicateur horizontal derniere connexion dans message
-// TODO : Local cache
-// TODO : get les ocnnections une fois par fonction..
 // TODO : change routes /users/ en /action
-// todo : refactor id => uuid
 // todo : add a report table
 // todo : add a suggestions/bugs table / fonctionnalite send developer feedback
 // todo : retester les error messages

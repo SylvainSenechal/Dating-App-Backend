@@ -14,7 +14,7 @@ use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
-use crate::{data_access_layer, AppState}; // todo : refactor into dto/dal logic
+use crate::{data_access_layer, AppState};
 
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
@@ -101,7 +101,6 @@ pub async fn update_user(
         ));
     }
     // todo : check updated email is not taken
-    // check looking for gender / gender
     data_access_layer::user_dal::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())
 }
@@ -141,7 +140,6 @@ pub async fn find_lover(
     }
 }
 
-// Todo : swiper should only be able to swipe a user given by the backend (here you can set swiped_id to be anybody, inclduing yourself..)
 pub async fn swipe_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,

@@ -1,5 +1,6 @@
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::requests::requests;
 use crate::AppState;
 use chrono;
 use rusqlite::params;
@@ -7,26 +8,16 @@ use serde::Serialize;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Debug, Clone)]
-pub struct TraceRequest {
-    pub trace_id: Option<usize>,
-    pub method: String,
-    pub uri: String,
-    pub user_agent: Option<String>,
-}
-
 #[derive(Serialize)]
 pub struct GetTracesResponse {
     trace_id: Option<usize>,
     datetime: Option<String>,
-    // pub ip: Option<std::net::SocketAddr>, TODO : Decide which fields to publicly show
     method: Option<String>,
     uri: Option<String>,
     user_agent: Option<String>,
-    // data: Option<String>,
 }
 
-pub fn create_trace(db: &Arc<AppState>, trace: TraceRequest) -> Result<(), SqliteError> {
+pub fn create_trace(db: &Arc<AppState>, trace: requests::TraceRequest) -> Result<(), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
         .prepare_cached("INSERT INTO Traces (trace_uuid, trace_id, datetime, method, uri, user_agent) VALUES (?, ?, ?, ?, ?, ?)")
@@ -45,7 +36,7 @@ pub fn create_trace(db: &Arc<AppState>, trace: TraceRequest) -> Result<(), Sqlit
     Ok(())
 }
 
-// All for now, later add filters
+// todo : don't send back everything..
 pub fn get_traces(db: &Arc<AppState>) -> Result<Vec<GetTracesResponse>, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding

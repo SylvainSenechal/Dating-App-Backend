@@ -11,8 +11,6 @@ pub struct ApiResponse<T: Serialize> {
     pub data: Option<T>,
 }
 
-// "User found".to_string() TODO : MESSAGE IN CONST
-
 // Error type : Generic that implements intoResponse ?
 pub fn response_ok<T: Serialize>(
     data: Option<T>,

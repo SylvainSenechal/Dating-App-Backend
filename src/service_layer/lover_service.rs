@@ -1,4 +1,4 @@
-use crate::data_access_layer::lover_dal::Lover; // todo : refactor into dto/dal logic
+use crate::data_access_layer::lover_dal::Lover;
 use crate::my_errors::service_errors::ServiceError;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};

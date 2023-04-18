@@ -11,8 +11,6 @@ use axum::{
 };
 use std::sync::Arc;
 
-// TODO struct count json ?
-
 pub async fn loved_count(
     // How many users loved you
     jwt_claims: JwtClaims,

@@ -1,4 +1,4 @@
-use crate::data_access_layer::trace_dal::TraceRequest;
+use crate::requests::requests;
 use crate::{data_access_layer, AppState};
 use axum::{extract::State, http::Request, middleware::Next, response::Response};
 use std::sync::Arc;
@@ -8,7 +8,7 @@ pub async fn record_trace<B>(
     request: Request<B>,
     next: Next<B>,
 ) -> Response {
-    let mut trace = TraceRequest {
+    let mut trace = requests::TraceRequest {
         trace_id: None,
         method: request.method().to_string(),
         uri: request.uri().to_string(),

@@ -48,7 +48,7 @@ pub struct CreateUserRequest {
     pub age: u8,
     pub latitude: f32,
     pub longitude: f32,
-    pub gender: Gender, // TODO add enum constraint
+    pub gender: Gender,
     pub looking_for: String,
 }
 
@@ -70,4 +70,13 @@ pub struct CreateMessageRequest {
 pub struct GreenTickMessagesRequest {
     pub love_uuid: String,
     pub lover_ticked_uuid: String,
+}
+
+// TRACES //////////////////////////////////////
+#[derive(Debug, Clone)]
+pub struct TraceRequest {
+    pub trace_id: Option<usize>,
+    pub method: String,
+    pub uri: String,
+    pub user_agent: Option<String>,
 }
