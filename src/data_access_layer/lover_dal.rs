@@ -188,9 +188,9 @@ pub fn tick_love(
         .prepare_cached(
             "
             UPDATE Lovers
-            SET 
-                seen_by_lover1 = CASE WHEN lover1 = ? THEN 1 ELSE 0 END,
-                seen_by_lover2 = CASE WHEN lover2 = ? THEN 1 ELSE 0 END
+            SET
+                seen_by_lover1 = CASE WHEN lover1 = ? THEN 1 ELSE seen_by_lover1 END,
+                seen_by_lover2 = CASE WHEN lover2 = ? THEN 1 ELSE seen_by_lover2 END
             WHERE love_uuid = ?
         ",
         )

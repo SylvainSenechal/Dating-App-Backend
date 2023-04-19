@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use rand::thread_rng;
-use std::sync::Arc;
+use std::{net::ToSocketAddrs, sync::Arc};
 
 use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::data_access_layer::user_dal::User;

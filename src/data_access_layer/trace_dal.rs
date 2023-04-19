@@ -36,7 +36,7 @@ pub fn create_trace(db: &Arc<AppState>, trace: requests::TraceRequest) -> Result
     Ok(())
 }
 
-// todo : don't send back everything..
+// todo : don't send back everything.., group by time count number
 pub fn get_traces(db: &Arc<AppState>) -> Result<Vec<GetTracesResponse>, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
