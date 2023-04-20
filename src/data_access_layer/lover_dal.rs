@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
+use crate::requests::requests::Gender;
 use crate::AppState;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -200,4 +201,59 @@ pub fn tick_love(
         .map_err(map_sqlite_error)?;
 
     Ok(())
+}
+
+pub fn potential_matches_count(
+    db: &Arc<AppState>,
+    user_uuid: String,
+    looking_for: Gender,
+    search_radius: u16,
+    latitude: f32,
+    longitude: f32,
+    age_min: u8,
+    age_max: u8,
+) -> Result<usize, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
+        .prepare_cached(
+            "
+                SELECT count(*) as count, 
+                6371 * acos(
+                    sin(?) * sin(latitude) +
+                    cos(?) * cos(latitude) * cos(? - longitude)
+                ) as distance
+                FROM Users
+                WHERE user_uuid <> ?
+                AND gender = ?
+                AND age <= ?
+                AND age >= ?
+                AND user_uuid NOT IN ( -- don't pick someone that the user has already swipped
+                    SELECT swiped as user_uuid
+                    FROM MatchingResults
+                    WHERE swiper = ?
+                )
+                AND distance < ?
+               ",
+        )
+        .map_err(map_sqlite_error)?;
+    println!("{}", age_max);
+    println!("{}", age_min);
+    let potential_matches_count = statement
+        .query_row(
+            params![
+                latitude,
+                latitude,
+                longitude,
+                user_uuid,
+                looking_for,
+                age_max,
+                age_min,
+                user_uuid,
+                search_radius
+            ],
+            |row| row.get("count"),
+        )
+        .map_err(map_sqlite_error)?;
+
+    Ok(potential_matches_count)
 }

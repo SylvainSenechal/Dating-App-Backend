@@ -5,15 +5,19 @@ use axum::{
     Json,
 };
 use rand::thread_rng;
-use std::{net::ToSocketAddrs, sync::Arc};
+use std::sync::Arc;
 
-use crate::constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST};
 use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
 use crate::requests::requests;
+use crate::responses::responses;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
+use crate::{
+    constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST},
+    data_access_layer::user_dal::PotentialLover,
+};
 use crate::{data_access_layer, AppState};
 
 pub async fn create_user(
@@ -108,18 +112,12 @@ pub async fn update_user(
 pub async fn find_lover(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
-) -> Result<(StatusCode, Json<ApiResponse<User>>), ServiceError> {
-    let user = data_access_layer::user_dal::get_user_by_uuid(&state, jwt_claims.user_uuid.clone());
-    let user = match user {
-        Ok(user) => user,
-        Err(err) => return Err(ServiceError::SqliteError(err)),
-    };
-
+) -> Result<(StatusCode, Json<ApiResponse<PotentialLover>>), ServiceError> {
+    let user = data_access_layer::user_dal::get_user_by_uuid(&state, jwt_claims.user_uuid.clone())?;
     let potential_lover = data_access_layer::user_dal::find_love_target(
         &state,
         jwt_claims.user_uuid,
         user.looking_for,
-        user.gender,
         user.search_radius,
         user.latitude,
         user.longitude,
@@ -144,7 +142,7 @@ pub async fn swipe_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Json(swipe_user_request): Json<requests::SwipeUserRequest>,
-) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
+) -> Result<(StatusCode, Json<ApiResponse<responses::SwipeUserResponse>>), ServiceError> {
     println!("{:?}", swipe_user_request);
     if jwt_claims.user_uuid == swipe_user_request.swiped_uuid {
         // Cannot swipe yourself..
@@ -183,7 +181,10 @@ pub async fn swipe_user(
                                 .unwrap()
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
-                            response_ok_with_message(None::<()>, "you matched !".to_string())
+                            response_ok_with_message(
+                                Some(responses::SwipeUserResponse::Matched),
+                                "you matched !".to_string(),
+                            )
                         }
                         Err(err) => {
                             state
@@ -203,7 +204,10 @@ pub async fn swipe_user(
                         .unwrap()
                         .execute("END TRANSACTION", [])
                         .map_err(transaction_error)?;
-                    response_ok_with_message(None::<()>, "you love that person !".to_string())
+                    response_ok_with_message(
+                        Some(responses::SwipeUserResponse::NotMatched),
+                        "you love that person !".to_string(),
+                    )
                 }
                 Err(err) => {
                     state

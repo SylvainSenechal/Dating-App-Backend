@@ -24,7 +24,7 @@ use constants::constants::DATABASE_NAME;
 // todo : check ON DELETE CASCADE
 // todo : check enabling foreign key constraint
 // todo : voir sse qui spam requetes
-
+// todo : faire un graphe three js ou canvas sur les stats avec des fleches /swipe pas swipe
 use axum::{
     http,
     http::{HeaderValue, Method, StatusCode},
@@ -131,6 +131,10 @@ async fn main() {
         .route(
             "/users/:user_uuid/statistics/rejecting",
             get(service_layer::statistics_service::rejecting_count),
+        )
+        .route(
+            "/users/:user_uuid/statistics/matching_potential",
+            get(service_layer::statistics_service::matching_potential),
         )
         .route(
             "/users/:user_uuid/statistics/traces",

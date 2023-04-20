@@ -1,3 +1,4 @@
+use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};
 use crate::{data_access_layer, AppState};
@@ -5,7 +6,7 @@ use crate::{
     data_access_layer::trace_dal::GetTracesResponse, my_errors::service_errors::ServiceError,
 };
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
@@ -61,6 +62,29 @@ pub async fn rejecting_count(
     }
     let swiped_count = data_access_layer::user_dal::swiping_count(&state, jwt_claims.user_uuid, 0)?;
     response_ok(Some(swiped_count))
+}
+
+pub async fn matching_potential(
+    jwt_claims: JwtClaims,
+    State(state): State<Arc<AppState>>,
+    Path(user_uuid): Path<String>,
+    matching_potential_request: Query<requests::MatchingPotentialRequest>,
+) -> Result<(StatusCode, Json<ApiResponse<usize>>), ServiceError> {
+    if jwt_claims.user_uuid != user_uuid {
+        return Err(ServiceError::ForbiddenQuery);
+    }
+    let user = data_access_layer::user_dal::get_user_by_uuid(&state, jwt_claims.user_uuid.clone())?;
+    let potential_matches_count = data_access_layer::lover_dal::potential_matches_count(
+        &state,
+        jwt_claims.user_uuid,
+        matching_potential_request.looking_for,
+        matching_potential_request.search_radius,
+        matching_potential_request.latitude,
+        matching_potential_request.longitude,
+        matching_potential_request.looking_for_age_min,
+        matching_potential_request.looking_for_age_max,
+    )?;
+    response_ok(Some(potential_matches_count))
 }
 
 pub async fn backend_activity(

@@ -28,6 +28,17 @@ pub struct User {
     pub description: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PotentialLover {
+    pub uuid: String,
+    pub name: String,
+    pub last_seen: String,
+    pub age: u8,
+    pub gender: String,
+    pub description: String,
+    pub distance: f32,
+}
+
 pub fn create_user(
     db: &Arc<AppState>,
     user: requests::CreateUserRequest,
@@ -45,8 +56,8 @@ pub fn create_user(
             user.email,
             format!("{:?}", chrono::offset::Utc::now()), // Last seen = now
             user.age,
-            user.latitude,
-            user.longitude,
+            user.latitude * std::f32::consts::PI / 180.,
+            user.longitude * std::f32::consts::PI / 180.,
             user.gender,
             user.looking_for
         ])
@@ -231,22 +242,24 @@ pub fn find_love_target(
     db: &Arc<AppState>,
     user_uuid: String,
     looking_for: String,
-    gender: String,
     search_radius: u16,
     latitude: f32,
     longitude: f32,
     age_min: u8,
     age_max: u8,
-) -> Result<User, SqliteError> {
+) -> Result<PotentialLover, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
         .prepare_cached(
             "
-                SELECT *
+                SELECT *, 
+                6371 * acos(
+                    sin(?) * sin(latitude) +
+                    cos(?) * cos(latitude) * cos(? - longitude)
+                ) as distance
                 FROM Users
                 WHERE user_uuid <> ?
                 AND gender = ?
-                AND looking_for = ?
                 AND age <= ?
                 AND age >= ?
                 AND user_uuid NOT IN ( -- don't pick someone that the user has already swipped
@@ -254,6 +267,7 @@ pub fn find_love_target(
                     FROM MatchingResults
                     WHERE swiper = ?
                 )
+                AND distance < ?
                 ORDER BY datetime(last_seen) DESC -- Getting the most recently active user
                ",
         )
@@ -262,23 +276,25 @@ pub fn find_love_target(
     println!("{}", age_min);
     statement
         .query_row(
-            params![user_uuid, looking_for, gender, age_max, age_min, user_uuid],
+            params![
+                latitude,
+                latitude,
+                longitude,
+                user_uuid,
+                looking_for,
+                age_max,
+                age_min,
+                user_uuid,
+                search_radius
+            ],
             |row| {
-                Ok(User {
+                Ok(PotentialLover {
                     uuid: row.get("user_uuid")?,
-                    private_uuid: "".to_string(),
                     name: row.get("name")?,
-                    password: "".to_string(),
-                    email: "".to_string(),
                     last_seen: row.get("last_seen")?,
                     age: row.get("age")?,
-                    latitude: row.get("latitude")?,
-                    longitude: row.get("longitude")?,
+                    distance: row.get("distance")?,
                     gender: row.get("gender")?,
-                    looking_for: row.get("looking_for")?,
-                    search_radius: 0,
-                    looking_for_age_min: 0,
-                    looking_for_age_max: 0,
                     description: row.get("description")?,
                 })
             },

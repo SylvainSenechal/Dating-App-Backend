@@ -18,7 +18,7 @@ pub struct UpdateUserInfosReq {
     pub description: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug)]
 pub enum Gender {
     #[serde(rename = "male")]
     Male,
@@ -79,4 +79,15 @@ pub struct TraceRequest {
     pub method: String,
     pub uri: String,
     pub user_agent: Option<String>,
+}
+
+// STATISTICS //////////////////////////////////////
+#[derive(Deserialize)]
+pub struct MatchingPotentialRequest {
+    pub looking_for: Gender,
+    pub search_radius: u16,
+    pub latitude: f32,
+    pub longitude: f32,
+    pub looking_for_age_min: u8,
+    pub looking_for_age_max: u8,
 }
