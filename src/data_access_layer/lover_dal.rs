@@ -33,13 +33,6 @@ pub struct Lover {
     pub description: String,
 }
 
-#[allow(dead_code)]
-pub struct LoveRelation {
-    pub love_uuid: String,
-    pub lover1: String,
-    pub lover2: String,
-}
-
 pub fn create_lovers(
     db: &Arc<AppState>,
     lover1: String,
@@ -55,28 +48,6 @@ pub fn create_lovers(
 
     Ok(())
 }
-
-// #[allow(dead_code)]
-// // Get all the lovers of the user_id (user_id is exluded from result), a lover is a user, with an added love_id field
-// pub fn get_love_relation(db: &Arc<AppState>, love_uuid: String) -> Result<LoveRelation, SqliteError> {
-//     let binding = db.connection.get().unwrap();
-//     let mut statement = binding
-//         .prepare_cached(
-//             "
-//             SELECT * FROM Lovers WHERE love_uuid = ?
-//             ",
-//         )
-//         .map_err(map_sqlite_error)?;
-//     statement
-//         .query_row(params![love_uuid], |row| {
-//             Ok(LoveRelation {
-//                 love_uuid: row.get("love_uuid")?,
-//                 lover1: row.get("lover1")?,
-//                 lover2: row.get("lovee2")?,
-//             })
-//         })
-//         .map_err(map_sqlite_error)
-// }
 
 // Return true if user_uuid is in the loved_id relation
 pub fn user_in_love_relation(
@@ -214,6 +185,7 @@ pub fn potential_matches_count(
     age_max: u8,
 ) -> Result<usize, SqliteError> {
     let binding = db.connection.get().unwrap();
+    // todo : potential sql optimization, selecting from MatchingResults ?
     let mut statement = binding
         .prepare_cached(
             "
