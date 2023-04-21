@@ -31,7 +31,7 @@ pub async fn record_trace<B>(
 
     match data_access_layer::trace_dal::create_trace(&state, trace.clone()) {
         Ok(_) => (),
-        Err(e) => println!("failed recording trace {:?} ", trace),
+        Err(e) => println!("failed recording trace {:?}, error: {:?} ", trace, e),
     }
     let response = next.run(request).await;
 

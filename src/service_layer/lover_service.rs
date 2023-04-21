@@ -21,7 +21,7 @@ pub async fn get_lovers(
     let lovers_found = data_access_layer::lover_dal::get_lovers(&state, user_uuid);
     match lovers_found {
         Ok(lovers) => response_ok(Some(lovers)),
-        Err(err) => Err(ServiceError::SqliteError(err)),
+        Err(err) => Err(ServiceError::Sqlite(err)),
     }
 }
 

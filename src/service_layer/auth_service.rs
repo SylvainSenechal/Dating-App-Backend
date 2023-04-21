@@ -98,13 +98,13 @@ pub async fn login(
                         &my_claims,
                         &EncodingKey::from_secret(KEY_JWT),
                     )
-                    .expect("failed token creation");
+                    .map_err(|_| AuthError::TokenCreation)?;
                     let refresh_token = encode(
                         &Header::default(),
                         &my_refresh_claims,
                         &EncodingKey::from_secret(KEY_JWT_REFRESH),
                     )
-                    .expect("failed token creation");
+                    .map_err(|_| AuthError::TokenCreation)?;
                     response_ok_auth_with_message(
                         Some(LoginResponse {
                             token: token,
@@ -153,7 +153,7 @@ pub async fn token_refresh(
                 &my_claims,
                 &EncodingKey::from_secret(KEY_JWT),
             )
-            .expect("failed token creation");
+            .map_err(|_| AuthError::TokenCreation)?;
             response_auth_ok(Some(RefreshResponse { token: token }))
         }
         Err(e) => match *e.kind() {
@@ -170,7 +170,6 @@ pub async fn token_refresh(
 #[derive(Debug)]
 pub enum AuthError {
     WrongCredentials,
-    MissingCredentials,
     TokenCreation,
     InvalidToken,
 }
@@ -179,7 +178,6 @@ impl IntoResponse for AuthError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
             AuthError::WrongCredentials => (StatusCode::UNAUTHORIZED, "Wrong credentials"),
-            AuthError::MissingCredentials => (StatusCode::BAD_REQUEST, "Missing credentials"),
             AuthError::TokenCreation => (StatusCode::INTERNAL_SERVER_ERROR, "Token creation error"),
             AuthError::InvalidToken => (StatusCode::BAD_REQUEST, "Invalid token"),
         };
@@ -210,7 +208,7 @@ impl FromRequestParts<Arc<AppState>> for JwtClaims {
         .map_err(|_| AuthError::InvalidToken)?;
 
         match data_access_layer::user_dal::update_user_last_seen(
-            &state,
+            state,
             token_data.claims.user_uuid.clone(),
         ) {
             Ok(_) => (),

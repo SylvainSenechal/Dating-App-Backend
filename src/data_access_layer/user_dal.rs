@@ -126,7 +126,7 @@ pub fn get_user_uuid_by_private_uuid(
         .map_err(map_sqlite_error)?;
 
     statement
-        .query_row(params![private_uuid], |row| Ok(row.get("user_uuid")?))
+        .query_row(params![private_uuid], |row| row.get("user_uuid"))
         .map_err(map_sqlite_error)
 }
 

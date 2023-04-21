@@ -48,7 +48,7 @@ pub async fn create_user(
             response_ok_with_message(None::<()>, "user created".to_string())
         }
         Ok(_) => Err(ServiceError::UserAlreadyExist),
-        Err(err) => Err(ServiceError::SqliteError(err)),
+        Err(err) => Err(ServiceError::Sqlite(err)),
     }
 }
 
@@ -132,7 +132,7 @@ pub async fn find_lover(
         Err(err) => {
             match err {
                 SqliteError::NotFound => Err(ServiceError::NoPotentialMatchFound), // TODO response for this
-                _ => Err(ServiceError::SqliteError(err)),
+                _ => Err(ServiceError::Sqlite(err)),
             }
         }
     }
@@ -193,7 +193,7 @@ pub async fn swipe_user(
                                 .unwrap()
                                 .execute("END TRANSACTION", [])
                                 .map_err(transaction_error)?;
-                            Err(ServiceError::SqliteError(err))
+                            Err(ServiceError::Sqlite(err))
                         }
                     }
                 }
@@ -216,7 +216,7 @@ pub async fn swipe_user(
                         .unwrap()
                         .execute("END TRANSACTION", [])
                         .map_err(transaction_error)?;
-                    Err(ServiceError::SqliteError(err))
+                    Err(ServiceError::Sqlite(err))
                 }
             }
         }
@@ -227,7 +227,7 @@ pub async fn swipe_user(
                 .unwrap()
                 .execute("END TRANSACTION", [])
                 .map_err(transaction_error)?;
-            Err(ServiceError::SqliteError(err))
+            Err(ServiceError::Sqlite(err))
         }
     }
 }

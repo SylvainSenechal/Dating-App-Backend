@@ -16,17 +16,14 @@ pub struct ApiResponseError {
 
 #[derive(Debug)]
 pub enum ServiceError {
-    InternalError,
-    ServiceError(String),
+    Internal,
     UserAlreadyExist,
     NoPotentialMatchFound,
-    SqliteError(SqliteError),
-    LoginError,
-    JwtError,
+    Sqlite(SqliteError),
     ForbiddenQuery,
     ValueNotAccepted(String, String), // (Value, Reason)
-    TransactionError,
-    UnknownServiceError,
+    Transaction,
+    UnknownServiceProblem,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -38,37 +35,31 @@ pub enum ErrorCode {
 impl ServiceError {
     pub fn error_message(&self) -> String {
         match self {
-            Self::InternalError => "Internal error".to_string(),
-            Self::ServiceError(_) => "Service layer error".to_string(),
+            Self::Internal => "Internal error".to_string(),
             Self::UserAlreadyExist => "User already exists".to_string(),
             Self::NoPotentialMatchFound => "No potential match found".to_string(),
-            Self::SqliteError(_) => "Sqlite internal error".to_string(),
-            Self::LoginError => "Login error".to_string(),
-            Self::JwtError => "Jwt internal error".to_string(),
+            Self::Sqlite(_) => "Sqlite internal error".to_string(),
             Self::ForbiddenQuery => "Query forbidden error".to_string(),
             Self::ValueNotAccepted(value, reason) => "SQL provided value not accepted, value = "
                 .to_string()
                 .add(value)
                 .add(" reason : ")
                 .add(reason),
-            Self::TransactionError => "Transaction error".to_string(),
-            Self::UnknownServiceError => "Unknown service layer error".to_string(),
+            Self::Transaction => "Transaction error".to_string(),
+            Self::UnknownServiceProblem => "Unknown service layer error".to_string(),
         }
     }
 
     fn status_code(&self) -> StatusCode {
         match *self {
-            Self::InternalError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::ServiceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Internal => StatusCode::INTERNAL_SERVER_ERROR,
             Self::UserAlreadyExist => StatusCode::UNPROCESSABLE_ENTITY,
             Self::NoPotentialMatchFound => StatusCode::NOT_FOUND,
-            Self::SqliteError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::LoginError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::JwtError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Sqlite(_) => StatusCode::INTERNAL_SERVER_ERROR,
             Self::ForbiddenQuery => StatusCode::FORBIDDEN,
             Self::ValueNotAccepted(_, _) => StatusCode::FORBIDDEN,
-            Self::TransactionError => StatusCode::INTERNAL_SERVER_ERROR,
-            Self::UnknownServiceError => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::Transaction => StatusCode::INTERNAL_SERVER_ERROR,
+            Self::UnknownServiceProblem => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

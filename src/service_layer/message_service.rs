@@ -44,7 +44,7 @@ pub async fn create_message(
         Ok(_) => (),
         Err(err) => match err {
             SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery), // user have not matched, cannot send message
-            _ => return Err(ServiceError::UnknownServiceError),
+            _ => return Err(ServiceError::UnknownServiceProblem),
         },
     }
 
@@ -105,7 +105,7 @@ pub async fn get_love_messages(
         ),
         Err(err) => match err {
             SqliteError::NotFound => return Err(ServiceError::ForbiddenQuery),
-            _ => return Err(ServiceError::UnknownServiceError),
+            _ => return Err(ServiceError::UnknownServiceProblem),
         },
     }
     let messages_found = data_access_layer::message_dal::get_love_messages(&state, love_uuid)?;
