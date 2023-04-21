@@ -60,7 +60,9 @@ pub async fn get_user(
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    let user_found = data_access_layer::user_dal::get_user_by_uuid(&state, user_uuid)?;
+    let mut user_found = data_access_layer::user_dal::get_user_by_uuid(&state, user_uuid)?;
+    user_found.latitude = user_found.latitude / std::f32::consts::PI * 180.;
+    user_found.longitude = user_found.longitude / std::f32::consts::PI * 180.;
     response_ok(Some(user_found))
 }
 
@@ -80,7 +82,7 @@ pub async fn update_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Path(user_uuid): Path<String>,
-    Json(update_user_request): Json<requests::UpdateUserInfosReq>,
+    Json(mut update_user_request): Json<requests::UpdateUserInfosReq>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
@@ -104,6 +106,8 @@ pub async fn update_user(
             "longitude should be between -180 and +180".to_string(),
         ));
     }
+    update_user_request.longitude = update_user_request.longitude * std::f32::consts::PI / 180.;
+    update_user_request.latitude = update_user_request.latitude * std::f32::consts::PI / 180.;
     // todo : check updated email is not taken
     data_access_layer::user_dal::update_user_infos(&state, update_user_request)?;
     response_ok_with_message(None::<()>, "user updated successfully".to_string())

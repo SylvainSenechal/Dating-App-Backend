@@ -136,6 +136,8 @@ pub fn get_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<User, S
         .prepare_cached("SELECT * FROM Users WHERE user_uuid = ?")
         .map_err(map_sqlite_error)?;
 
+    // user.latitude * std::f32::consts::PI / 180.,
+
     statement
         .query_row(params![user_uuid], |row| {
             Ok(User {
