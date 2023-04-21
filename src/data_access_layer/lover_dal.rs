@@ -10,8 +10,7 @@ use uuid::Uuid;
 
 // todo : do not return pricate infos
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Lover {
-    // same as user but with a love_id, and seen_by_lover1/2
+pub struct LoveWithLover {
     pub love_uuid: String,
     pub lover1: String,
     pub lover2: String,
@@ -20,16 +19,8 @@ pub struct Lover {
     pub lover_uuid: String,
     pub last_seen: String,
     pub name: String,
-    pub password: String,
-    pub email: String,
     pub age: u8,
-    pub latitude: f32,
-    pub longitude: f32,
     pub gender: String,
-    pub looking_for: String,
-    pub search_radius: u16,
-    pub looking_for_age_min: u8,
-    pub looking_for_age_max: u8,
     pub description: String,
 }
 
@@ -69,8 +60,11 @@ pub fn user_in_love_relation(
         .map_err(map_sqlite_error)
 }
 
-// Get all the lovers of the user_uuid (user_uuid is exluded from result), a lover is a user, with an added love_id field
-pub fn get_lovers(db: &Arc<AppState>, user_uuid: String) -> Result<Vec<Lover>, SqliteError> {
+// Get all the lovers of the user_uuid (user_uuid is exluded from result)
+pub fn get_lovers(
+    db: &Arc<AppState>,
+    user_uuid: String,
+) -> Result<Vec<LoveWithLover>, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
         .prepare_cached(
@@ -81,7 +75,7 @@ pub fn get_lovers(db: &Arc<AppState>, user_uuid: String) -> Result<Vec<Lover>, S
         .map_err(map_sqlite_error)?;
     let result_rows1 = statement
         .query_map(params![user_uuid], |row| {
-            Ok(Lover {
+            Ok(LoveWithLover {
                 love_uuid: row.get("love_uuid")?,
                 lover1: row.get("lover1")?,
                 lover2: row.get("lover2")?,
@@ -90,16 +84,8 @@ pub fn get_lovers(db: &Arc<AppState>, user_uuid: String) -> Result<Vec<Lover>, S
                 lover_uuid: row.get("user_uuid")?,
                 name: row.get("name")?,
                 last_seen: row.get("last_seen")?,
-                password: row.get("password")?, // no need ?
-                email: row.get("email")?,
                 age: row.get("age")?,
-                latitude: row.get("latitude")?,
-                longitude: row.get("longitude")?,
                 gender: row.get("gender")?,
-                looking_for: row.get("looking_for")?,
-                search_radius: row.get("search_radius")?,
-                looking_for_age_min: row.get("looking_for_age_min")?,
-                looking_for_age_max: row.get("looking_for_age_max")?,
                 description: row.get("description")?,
             })
         })
@@ -115,7 +101,7 @@ pub fn get_lovers(db: &Arc<AppState>, user_uuid: String) -> Result<Vec<Lover>, S
         .map_err(map_sqlite_error)?;
     let result_rows2 = statement
         .query_map(params![user_uuid], |row| {
-            Ok(Lover {
+            Ok(LoveWithLover {
                 love_uuid: row.get("love_uuid")?,
                 lover1: row.get("lover1")?,
                 lover2: row.get("lover2")?,
@@ -124,16 +110,8 @@ pub fn get_lovers(db: &Arc<AppState>, user_uuid: String) -> Result<Vec<Lover>, S
                 lover_uuid: row.get("user_uuid")?,
                 name: row.get("name")?,
                 last_seen: row.get("last_seen")?,
-                password: row.get("password")?,
-                email: row.get("email")?,
                 age: row.get("age")?,
-                latitude: row.get("latitude")?,
-                longitude: row.get("longitude")?,
                 gender: row.get("gender")?,
-                looking_for: row.get("looking_for")?,
-                search_radius: row.get("search_radius")?,
-                looking_for_age_min: row.get("looking_for_age_min")?,
-                looking_for_age_max: row.get("looking_for_age_max")?,
                 description: row.get("description")?,
             })
         })

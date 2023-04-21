@@ -1,4 +1,4 @@
-use crate::data_access_layer::lover_dal::Lover;
+use crate::data_access_layer::lover_dal::LoveWithLover;
 use crate::my_errors::service_errors::ServiceError;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};
@@ -14,7 +14,7 @@ pub async fn get_lovers(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Path(user_uuid): Path<String>,
-) -> Result<(StatusCode, Json<ApiResponse<Vec<Lover>>>), ServiceError> {
+) -> Result<(StatusCode, Json<ApiResponse<Vec<LoveWithLover>>>), ServiceError> {
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
