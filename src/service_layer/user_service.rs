@@ -1,4 +1,7 @@
-use argon2::{password_hash::SaltString, Algorithm, Argon2, Params, PasswordHasher, Version};
+use argon2::{
+    password_hash::{PasswordHash, PasswordVerifier, SaltString},
+    Algorithm, Argon2, Params, PasswordHasher, Version,
+};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -70,12 +73,32 @@ pub async fn delete_user(
     jwt_claims: JwtClaims,
     State(state): State<Arc<AppState>>,
     Path(user_uuid): Path<String>,
-) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
+    Json(delete_user_request): Json<requests::DeleteUserRequest>,
+) -> Result<(StatusCode, Json<ApiResponse<responses::MessageResponse>>), ServiceError> {
     if jwt_claims.user_uuid != user_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
-    data_access_layer::user_dal::delete_user_by_uuid(&state, user_uuid)?;
-    response_ok_with_message(None::<()>, "user deleted successfully".to_string())
+
+    let password =
+        data_access_layer::user_dal::get_user_password_by_user_uuid(&state, jwt_claims.user_uuid)?;
+    let rehash = PasswordHash::new(&password).unwrap(); // Turning string into PHC string format type
+    let valid_password =
+        Argon2::default().verify_password(delete_user_request.password.as_bytes(), &rehash);
+
+    match valid_password {
+        Ok(_) => {
+            data_access_layer::user_dal::delete_user_by_uuid(&state, user_uuid)?;
+            response_ok_with_message(
+                Some(responses::MessageResponse {
+                    message: "user deleted successfully".to_string(),
+                }),
+                "user deleted successfully".to_string(),
+            )
+        }
+        Err(_) => response_ok(Some(responses::MessageResponse {
+            message: "wrong password".to_string(),
+        })),
+    }
 }
 
 pub async fn update_user(

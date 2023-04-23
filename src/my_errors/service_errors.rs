@@ -76,6 +76,7 @@ impl IntoResponse for ServiceError {
             error_message: self.error_message(),
             error_code: ErrorCode::UnspecifiedError, // TODO
         });
+        println!("service error encountered : {:?}", self);
 
         (http_status, body).into_response()
     }

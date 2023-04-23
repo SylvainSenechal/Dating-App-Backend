@@ -8,7 +8,6 @@ use crate::AppState;
 use std::sync::Arc;
 use uuid::Uuid;
 
-// todo : do not return pricate infos
 #[derive(Serialize, Deserialize, Debug)]
 pub struct LoveWithLover {
     pub love_uuid: String,

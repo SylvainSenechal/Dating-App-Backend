@@ -53,6 +53,11 @@ pub struct CreateUserRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DeleteUserRequest {
+    pub password: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct SwipeUserRequest {
     pub swiped_uuid: String,
     pub love: bool, // boolean for sqlite, 0 = dont love, 1 - love

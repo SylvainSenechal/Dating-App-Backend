@@ -116,6 +116,21 @@ pub fn get_user_password_by_email(
         .map_err(map_sqlite_error)
 }
 
+// This route is for internal use as the password returned is the real Argon-hashed one
+pub fn get_user_password_by_user_uuid(
+    db: &Arc<AppState>,
+    user_uuid: String,
+) -> Result<String, SqliteError> {
+    let binding = db.connection.get().unwrap();
+    let mut statement = binding
+        .prepare_cached("SELECT password FROM Users WHERE user_uuid = ?")
+        .map_err(map_sqlite_error)?;
+
+    statement
+        .query_row(params![user_uuid], |row| Ok(row.get("password")?))
+        .map_err(map_sqlite_error)
+}
+
 pub fn get_user_uuid_by_private_uuid(
     db: &Arc<AppState>,
     private_uuid: String,
@@ -135,16 +150,13 @@ pub fn get_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<User, S
     let mut statement = binding
         .prepare_cached("SELECT * FROM Users WHERE user_uuid = ?")
         .map_err(map_sqlite_error)?;
-
-    // user.latitude * std::f32::consts::PI / 180.,
-
     statement
         .query_row(params![user_uuid], |row| {
             Ok(User {
                 uuid: row.get("user_uuid")?,
                 private_uuid: row.get("private_user_uuid")?,
                 name: row.get("name")?,
-                password: "".to_string(),
+                password: "".to_string(), // todo : fix
                 email: row.get("email")?,
                 last_seen: row.get("last_seen")?,
                 age: row.get("age")?,

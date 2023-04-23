@@ -78,8 +78,8 @@ pub async fn matching_potential(
         jwt_claims.user_uuid,
         matching_potential_request.looking_for,
         matching_potential_request.search_radius,
-        matching_potential_request.latitude,
-        matching_potential_request.longitude,
+        matching_potential_request.latitude * std::f32::consts::PI / 180.,
+        matching_potential_request.longitude * std::f32::consts::PI / 180.,
         matching_potential_request.looking_for_age_min,
         matching_potential_request.looking_for_age_max,
     )?;

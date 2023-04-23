@@ -7,3 +7,8 @@ pub enum SwipeUserResponse {
     #[serde(rename = "not_matched")]
     NotMatched,
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct MessageResponse {
+    pub message: String,
+}
