@@ -49,7 +49,6 @@ pub async fn create_message(
     }
 
     let creation_datetime = format!("{:?}", chrono::offset::Utc::now());
-
     let uuid_message = data_access_layer::message_dal::create_message(
         &state,
         &create_message_request,

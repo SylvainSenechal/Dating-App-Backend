@@ -165,6 +165,10 @@ async fn main() {
             "/lovers/action/:love_uuid/tick_love",
             put(service_layer::lover_service::tick_love),
         )
+        .route(
+            "/feedbacks",
+            post(service_layer::feedback_service::create_feedback),
+        )
         .route("/auth", post(service_layer::auth_service::login))
         .route(
             "/auth/refresh",

@@ -97,12 +97,12 @@ CREATE TABLE IF NOT EXISTS Traces (
     method TEXT,
     uri TEXT,
     user_agent TEXT
-)
--- CREATE TABLE IF NOT EXISTS Feedbacks (
---     feedback_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
---     trace_uuid BLOB NOT NULL,
---     poster_uuid INTEGER NOT NULL,
---     feedback_message TEXT NOT NULL,
---     creation_datetime TEXT NOT NULL,
---     FOREIGN KEY(poster_uuid) REFERENCES Users(user_uuid) ON DELETE CASCADE, -- On delete cascade not sure
--- )
+);
+CREATE TABLE IF NOT EXISTS Feedbacks (
+    feedback_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    feedback_uuid BLOB NOT NULL,
+    poster_uuid INTEGER NOT NULL,
+    feedback_message TEXT NOT NULL,
+    creation_datetime TEXT NOT NULL,
+    FOREIGN KEY(poster_uuid) REFERENCES Users(user_uuid)
+);

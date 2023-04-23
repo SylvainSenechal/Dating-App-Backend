@@ -96,3 +96,9 @@ pub struct MatchingPotentialRequest {
     pub looking_for_age_min: u8,
     pub looking_for_age_max: u8,
 }
+
+// FEEDBACKS //////////////////////////////////////
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateFeedbackRequest {
+    pub feedback_message: String,
+}
