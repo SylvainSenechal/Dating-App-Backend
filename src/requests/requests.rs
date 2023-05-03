@@ -102,3 +102,10 @@ pub struct MatchingPotentialRequest {
 pub struct CreateFeedbackRequest {
     pub feedback_message: String,
 }
+
+// PHOTOS //////////////////////////////////////
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SwitchPhotosRequest {
+    pub photo_uuid1: String,
+    pub photo_uuid2: String,
+}

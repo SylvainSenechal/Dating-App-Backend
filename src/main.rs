@@ -1,4 +1,5 @@
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
+mod clients;
 mod constants;
 mod data_access_layer;
 mod my_errors;
@@ -25,7 +26,9 @@ use constants::constants::DATABASE_NAME;
 // todo : check enabling foreign key constraint
 // todo : voir sse qui spam requetes
 // todo : faire un graphe three js ou canvas sur les stats avec des fleches /swipe pas swipe
+// todo : LIMIT 1 for query one
 use axum::{
+    extract::DefaultBodyLimit,
     http,
     http::{HeaderValue, Method, StatusCode},
     middleware,
@@ -47,10 +50,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
     txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
+    aws_client: clients::aws::AwsClient,
 }
 
 impl AppState {
-    fn new() -> AppState {
+    async fn new() -> Arc<AppState> {
         let manager = SqliteConnectionManager::file(DATABASE_NAME);
         let pool = r2d2::Pool::builder()
             .max_size(100)
@@ -81,10 +85,12 @@ impl AppState {
         println!("pragma 3 {:?}", pragma3);
         // println!("pragma 4 {:?}", pragma4);
 
-        AppState {
+        let aws_client = clients::aws::AwsClient::new().await;
+        Arc::new(AppState {
             connection: pool,
             txs: Mutex::new(HashMap::new()),
-        }
+            aws_client: aws_client,
+        })
     }
 }
 
@@ -101,7 +107,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app_state = Arc::new(AppState::new());
+    let app_state = AppState::new().await;
 
     let app = Router::new()
         .route("/users", post(create_user))
@@ -156,7 +162,15 @@ async fn main() {
             "/messages/users/:user_uuid",
             get(service_layer::message_service::get_lover_messages),
         )
-        .route("/photos", post(service_layer::photos_service::save_file))
+        .route("/photos", post(service_layer::photos_service::save_photo))
+        .route(
+            "/photos/:photo_uuid",
+            delete(service_layer::photos_service::delete_photo),
+        )
+        .route(
+            "/photos/switch_photos",
+            post(service_layer::photos_service::switch_photos),
+        )
         .route(
             "/lovers/:user_uuid",
             get(service_layer::lover_service::get_lovers),
@@ -183,6 +197,7 @@ async fn main() {
             app_state.clone(),
             service_layer::trace_service::record_trace,
         ))
+        .layer(DefaultBodyLimit::max(3 * 1024 * 1024))
         .layer(
             CorsLayer::new()
                 // .allow_origin(Any)

@@ -26,6 +26,8 @@ pub struct User {
     pub looking_for_age_min: u8,
     pub looking_for_age_max: u8,
     pub description: String,
+    pub photo_urls: Option<String>,
+    pub photo_display_orders: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -37,6 +39,8 @@ pub struct PotentialLover {
     pub gender: String,
     pub description: String,
     pub distance: f32,
+    pub photo_urls: Option<String>,
+    pub photo_display_orders: Option<String>,
 }
 
 pub fn create_user(
@@ -66,6 +70,7 @@ pub fn create_user(
     Ok(())
 }
 
+// todo : replace by user_exists ?
 pub fn get_user_by_email(db: &Arc<AppState>, email: String) -> Result<User, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
@@ -90,6 +95,8 @@ pub fn get_user_by_email(db: &Arc<AppState>, email: String) -> Result<User, Sqli
                 looking_for_age_min: row.get("looking_for_age_min")?,
                 looking_for_age_max: row.get("looking_for_age_max")?,
                 description: row.get("description")?,
+                photo_urls: Some("".to_string()),
+                photo_display_orders: Some("".to_string()),
             })
         })
         .map_err(map_sqlite_error)
@@ -148,7 +155,16 @@ pub fn get_user_uuid_by_private_uuid(
 pub fn get_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<User, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("SELECT * FROM Users WHERE user_uuid = ?")
+        .prepare_cached(
+            "
+        SELECT *,
+        GROUP_CONCAT(Photos.url, ',') as photo_urls,
+        GROUP_CONCAT(Photos.display_order, ',') as photo_display_orders
+        
+        FROM Users 
+        LEFT JOIN Photos ON Users.user_uuid = Photos.user_uuid 
+        WHERE Users.user_uuid = ?",
+        )
         .map_err(map_sqlite_error)?;
     statement
         .query_row(params![user_uuid], |row| {
@@ -168,6 +184,8 @@ pub fn get_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<User, S
                 looking_for_age_min: row.get("looking_for_age_min")?,
                 looking_for_age_max: row.get("looking_for_age_max")?,
                 description: row.get("description")?,
+                photo_urls: row.get("photo_urls")?,
+                photo_display_orders: row.get("photo_display_orders")?,
             })
         })
         .map_err(map_sqlite_error)
@@ -270,19 +288,24 @@ pub fn find_love_target(
                 6371 * acos(
                     sin(?) * sin(latitude) +
                     cos(?) * cos(latitude) * cos(? - longitude)
-                ) as distance
+                ) as distance,
+                GROUP_CONCAT(Photos.url, ',') as photo_urls,
+                GROUP_CONCAT(Photos.display_order, ',') as photo_display_orders
+
                 FROM Users
-                WHERE user_uuid <> ?
-                AND gender = ?
-                AND age <= ?
-                AND age >= ?
-                AND user_uuid NOT IN ( -- don't pick someone that the user has already swipped
+                LEFT JOIN Photos ON Users.user_uuid = Photos.user_uuid 
+                WHERE Users.user_uuid <> ?
+                AND Users.gender = ?
+                AND Users.age <= ?
+                AND Users.age >= ?
+                AND Users.user_uuid NOT IN ( -- don't pick someone that the user has already swipped
                     SELECT swiped as user_uuid
                     FROM MatchingResults
                     WHERE swiper = ?
                 )
                 AND distance < ?
-                ORDER BY datetime(last_seen) DESC -- Getting the most recently active user
+                ORDER BY datetime(Users.last_seen) DESC -- Getting the most recently active user
+                LIMIT 1
                ",
         )
         .map_err(map_sqlite_error)?;
@@ -310,6 +333,8 @@ pub fn find_love_target(
                     distance: row.get("distance")?,
                     gender: row.get("gender")?,
                     description: row.get("description")?,
+                    photo_urls: row.get("photo_urls")?,
+                    photo_display_orders: row.get("photo_display_orders")?,
                 })
             },
         )

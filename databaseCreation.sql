@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS Photos (
     photo_uuid BLOB NOT NULL,
     user_uuid BLOB NOT NULL,
     url TEXT NOT NULL,
+    display_order INTEGER CHECK (display_order IN (1, 2, 3, 4, 5, 6)) NOT NULL, -- 6 photos max
     FOREIGN KEY(user_uuid) REFERENCES Users(user_uuid) ON DELETE CASCADE
 );
 CREATE TABLE IF NOT EXISTS MatchingResults (
