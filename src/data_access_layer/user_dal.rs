@@ -309,36 +309,43 @@ pub fn find_love_target(
                ",
         )
         .map_err(map_sqlite_error)?;
-    println!("{}", age_max);
-    println!("{}", age_min);
-    statement
-        .query_row(
-            params![
-                latitude,
-                latitude,
-                longitude,
-                user_uuid,
-                looking_for,
-                age_max,
-                age_min,
-                user_uuid,
-                search_radius
-            ],
-            |row| {
-                Ok(PotentialLover {
-                    uuid: row.get("user_uuid")?,
-                    name: row.get("name")?,
-                    last_seen: row.get("last_seen")?,
-                    age: row.get("age")?,
-                    distance: row.get("distance")?,
-                    gender: row.get("gender")?,
-                    description: row.get("description")?,
-                    photo_urls: row.get("photo_urls")?,
-                    photo_display_orders: row.get("photo_display_orders")?,
-                })
-            },
-        )
-        .map_err(map_sqlite_error)
+
+    let result = statement.query_row(
+        params![
+            latitude,
+            latitude,
+            longitude,
+            user_uuid,
+            looking_for,
+            age_max,
+            age_min,
+            user_uuid,
+            search_radius
+        ],
+        |row| {
+            Ok(PotentialLover {
+                uuid: row.get("user_uuid")?,
+                name: row.get("name")?,
+                last_seen: row.get("last_seen")?,
+                age: row.get("age")?,
+                distance: row.get("distance")?,
+                gender: row.get("gender")?,
+                description: row.get("description")?,
+                photo_urls: row.get("photo_urls")?,
+                photo_display_orders: row.get("photo_display_orders")?,
+            })
+        },
+    );
+    // Do no use ? to handle error here :
+    // Because of the group_concat, when there is no user found, we will still get a row with null
+    // value, and then when trying to access values "row.get("user_uuid")?," we will get an error that
+    // is different than just "QueryReturnedNoRows" : InvalidColumnType(1, "user_uuid", Null)
+    match result {
+        Ok(potential_lover) => Ok(potential_lover),
+        Err(rusqlite::Error::InvalidColumnType(_, _, _)) => Err(SqliteError::NotFound),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Err(SqliteError::NotFound),
+        Err(_) => Err(SqliteError::UnknownSqliteProblem),
+    }
 }
 
 pub fn swipe_user(

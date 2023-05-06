@@ -218,7 +218,9 @@ async fn main() {
         )
         .with_state(app_state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    let ip: [u8; 4] = [127, 0, 0, 1];
+    // let addr = SocketAddr::from(([0, 0, 0, 0], 80));
+    let addr = SocketAddr::from((ip, 8080));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

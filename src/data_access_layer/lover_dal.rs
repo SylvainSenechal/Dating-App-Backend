@@ -185,8 +185,6 @@ pub fn potential_matches_count(
                ",
         )
         .map_err(map_sqlite_error)?;
-    println!("{}", age_max);
-    println!("{}", age_min);
     let potential_matches_count = statement
         .query_row(
             params![
