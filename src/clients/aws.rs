@@ -1,16 +1,11 @@
 use aws_config::meta::region::RegionProviderChain;
+use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::{
-    copy_object::{CopyObjectError, CopyObjectOutput},
-    create_bucket::{CreateBucketError, CreateBucketOutput},
     delete_object::{DeleteObjectError, DeleteObjectOutput},
-    get_object::{GetObjectError, GetObjectOutput},
-    list_objects_v2::ListObjectsV2Output,
     put_object::{PutObjectError, PutObjectOutput},
 };
-use aws_sdk_s3::{error::SdkError, primitives::ByteStream};
-use aws_sdk_s3::{Client, Error};
+use aws_sdk_s3::Client;
 use aws_smithy_http;
-use std::path::Path;
 
 pub struct AwsClient {
     client: Client,

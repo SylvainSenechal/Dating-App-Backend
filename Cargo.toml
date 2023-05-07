@@ -33,12 +33,12 @@ r2d2 = "0.8.10"
 r2d2_sqlite = "0.21.0"
 rusqlite = "0.28.0"
 async-stream = "0.3.4"
-tokio = { version = "1.27.0", features = ["full"] }
+tokio = { version = "1.28.0", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["fs", "trace", "cors"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing = "0.1"
 
 aws-config = "0.55.1"
-aws-sdk-s3 = "0.26.0"
+aws-sdk-s3 = { version = "0.27.0", features = ["default"] }
 aws-smithy-http = "0.55.2"
 toml = "0.7.3"
