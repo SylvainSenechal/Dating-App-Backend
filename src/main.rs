@@ -1,5 +1,6 @@
 // modules system : https://www.sheshbabu.com/posts/rust-module-system/
 mod clients;
+mod configs;
 mod constants;
 mod data_access_layer;
 mod my_errors;
@@ -8,6 +9,7 @@ mod responses;
 mod service_layer;
 mod utilities;
 
+use configs::config::Config;
 use constants::constants::DATABASE_NAME;
 // TODO : Rework Actions CI/CD
 // TODO : Show when swiping if the user liked me already
@@ -51,6 +53,7 @@ pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
     txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
     aws_client: clients::aws::AwsClient,
+    config: Config,
 }
 
 impl AppState {
@@ -84,12 +87,13 @@ impl AppState {
         println!("pragma 2 {:?}", pragma2);
         println!("pragma 3 {:?}", pragma3);
         // println!("pragma 4 {:?}", pragma4);
-
-        let aws_client = clients::aws::AwsClient::new().await;
+        let config = configs::config::Config::new();
+        let aws_client = clients::aws::AwsClient::new(config.bucket_name.clone()).await;
         Arc::new(AppState {
             connection: pool,
             txs: Mutex::new(HashMap::new()),
             aws_client: aws_client,
+            config: config,
         })
     }
 }
@@ -108,7 +112,7 @@ async fn main() {
         .init();
 
     let app_state = AppState::new().await;
-
+    println!("{:?}", app_state.config);
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users/:user_uuid", get(get_user))

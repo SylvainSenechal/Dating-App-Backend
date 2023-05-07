@@ -24,6 +24,7 @@ impl FromStr for PhotoType {
 
     fn from_str(input: &str) -> Result<PhotoType, Self::Err> {
         match input {
+            // todo : check now that we use canvas image
             "image/png" => Ok(PhotoType::Png),
             "image/jpg" => Ok(PhotoType::Jpg),
             "image/jpeg" => Ok(PhotoType::Jpeg),

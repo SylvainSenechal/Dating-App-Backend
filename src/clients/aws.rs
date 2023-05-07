@@ -18,12 +18,12 @@ pub struct AwsClient {
 }
 
 impl AwsClient {
-    pub async fn new() -> AwsClient {
+    pub async fn new(bucket_name: String) -> AwsClient {
         let region_provider = RegionProviderChain::default_provider().or_else("ap-southeast-1");
         let shared_config = aws_config::from_env().region(region_provider).load().await;
         return AwsClient {
             client: Client::new(&shared_config),
-            bucket_name: "bucket-lemgo".to_string(),
+            bucket_name: bucket_name,
         };
     }
 

@@ -1,0 +1,5 @@
+port = 8080
+ip = [ 127, 0, 0, 1 ]
+key_jwt = 'badObviousTestKey'
+refresh_key_jwt = 'badObviousRefreshTestKey'
+bucket_name = 'bucket-lemgo-dev'

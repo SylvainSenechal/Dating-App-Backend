@@ -19,9 +19,7 @@ use serde_json::json;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::constants::constants::{
-    DEFAULT_HASH, KEY_JWT, KEY_JWT_REFRESH, TOKEN_LIFESPAN, TOKEN_REFRESH_LIFESPAN,
-};
+use crate::constants::constants::{DEFAULT_HASH, TOKEN_LIFESPAN, TOKEN_REFRESH_LIFESPAN};
 use crate::{data_access_layer, AppState};
 
 // JWT : https://github.com/Keats/jsonwebtoken#validation
@@ -96,13 +94,13 @@ pub async fn login(
                     let token = encode(
                         &Header::default(),
                         &my_claims,
-                        &EncodingKey::from_secret(KEY_JWT),
+                        &EncodingKey::from_secret(state.config.key_jwt.as_bytes()),
                     )
                     .map_err(|_| AuthError::TokenCreation)?;
                     let refresh_token = encode(
                         &Header::default(),
                         &my_refresh_claims,
-                        &EncodingKey::from_secret(KEY_JWT_REFRESH),
+                        &EncodingKey::from_secret(state.config.refresh_key_jwt.as_bytes()),
                     )
                     .map_err(|_| AuthError::TokenCreation)?;
                     response_ok_auth_with_message(
@@ -126,6 +124,7 @@ pub async fn login(
 }
 
 pub async fn token_refresh(
+    State(state): State<Arc<AppState>>,
     Json(refresh_request): Json<TokenRefreshRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<RefreshResponse>>), AuthError> {
     let validation = Validation {
@@ -133,7 +132,7 @@ pub async fn token_refresh(
     };
     let token_data = decode::<JwtClaims>(
         &refresh_request.refresh_token,
-        &DecodingKey::from_secret(KEY_JWT_REFRESH),
+        &DecodingKey::from_secret(state.config.refresh_key_jwt.as_bytes()),
         &validation,
     );
     match token_data {
@@ -151,7 +150,7 @@ pub async fn token_refresh(
             let token = encode(
                 &Header::default(),
                 &my_claims,
-                &EncodingKey::from_secret(KEY_JWT),
+                &EncodingKey::from_secret(state.config.key_jwt.as_bytes()),
             )
             .map_err(|_| AuthError::TokenCreation)?;
             response_auth_ok(Some(RefreshResponse { token: token }))
@@ -202,7 +201,7 @@ impl FromRequestParts<Arc<AppState>> for JwtClaims {
             .map_err(|_| AuthError::InvalidToken)?;
         let token_data = decode::<JwtClaims>(
             bearer.token(),
-            &DecodingKey::from_secret(KEY_JWT),
+            &DecodingKey::from_secret(state.config.key_jwt.as_bytes()),
             &Validation::default(),
         )
         .map_err(|_| AuthError::InvalidToken)?;
