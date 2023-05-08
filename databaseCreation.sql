@@ -1,12 +1,3 @@
--- cat databaseCreation.sql | sqlite3 love.db
--- install sqlite math functions :
--- download sqlite autoconf
--- tar -xvf sqlite-autoconf-*.tar.gz
--- cd sqlite-autoconf-*
--- ./configure --enable-math
--- make
--- sudo make install
-
 CREATE TABLE IF NOT EXISTS Users (
     user_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     user_uuid BLOB NOT NULL,
