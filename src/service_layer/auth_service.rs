@@ -94,13 +94,13 @@ pub async fn login(
                     let token = encode(
                         &Header::default(),
                         &my_claims,
-                        &EncodingKey::from_secret(state.config.key_jwt.as_bytes()),
+                        &EncodingKey::from_secret(state.key_jwt.as_bytes()),
                     )
                     .map_err(|_| AuthError::TokenCreation)?;
                     let refresh_token = encode(
                         &Header::default(),
                         &my_refresh_claims,
-                        &EncodingKey::from_secret(state.config.refresh_key_jwt.as_bytes()),
+                        &EncodingKey::from_secret(state.refresh_key_jwt.as_bytes()),
                     )
                     .map_err(|_| AuthError::TokenCreation)?;
                     response_ok_auth_with_message(
@@ -132,7 +132,7 @@ pub async fn token_refresh(
     };
     let token_data = decode::<JwtClaims>(
         &refresh_request.refresh_token,
-        &DecodingKey::from_secret(state.config.refresh_key_jwt.as_bytes()),
+        &DecodingKey::from_secret(state.refresh_key_jwt.as_bytes()),
         &validation,
     );
     match token_data {
@@ -150,7 +150,7 @@ pub async fn token_refresh(
             let token = encode(
                 &Header::default(),
                 &my_claims,
-                &EncodingKey::from_secret(state.config.key_jwt.as_bytes()),
+                &EncodingKey::from_secret(state.key_jwt.as_bytes()),
             )
             .map_err(|_| AuthError::TokenCreation)?;
             response_auth_ok(Some(RefreshResponse { token: token }))
@@ -201,7 +201,7 @@ impl FromRequestParts<Arc<AppState>> for JwtClaims {
             .map_err(|_| AuthError::InvalidToken)?;
         let token_data = decode::<JwtClaims>(
             bearer.token(),
-            &DecodingKey::from_secret(state.config.key_jwt.as_bytes()),
+            &DecodingKey::from_secret(state.key_jwt.as_bytes()),
             &Validation::default(),
         )
         .map_err(|_| AuthError::InvalidToken)?;

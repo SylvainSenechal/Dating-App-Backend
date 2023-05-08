@@ -1,5 +1,6 @@
 port = 80
 ip = [ 0, 0, 0, 0 ]
-
-
-bucket-name = 'bucket-lemgo-prod'
+key_jwt =
+refresh_key_jwt = 
+bucket_name = 'bucket-lemgo-prod'
+wed_domain = 'https://www.lemgo.io'

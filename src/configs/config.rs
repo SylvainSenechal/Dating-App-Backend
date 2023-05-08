@@ -3,11 +3,12 @@ use std::fs;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub port: usize,
+    pub port: u16,
     pub ip: [u8; 4],
     pub key_jwt: String,
     pub refresh_key_jwt: String,
     pub bucket_name: String,
+    pub wed_domain: String,
 }
 
 impl Config {

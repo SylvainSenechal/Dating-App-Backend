@@ -29,6 +29,8 @@ use constants::constants::DATABASE_NAME;
 // todo : voir sse qui spam requetes
 // todo : faire un graphe three js ou canvas sur les stats avec des fleches /swipe pas swipe
 // todo : LIMIT 1 for query one
+// todo : check tokio tower trace
+// todo : rework les notifs
 use axum::{
     extract::DefaultBodyLimit,
     http,
@@ -53,11 +55,12 @@ pub struct AppState {
     connection: Pool<SqliteConnectionManager>,
     txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
     aws_client: clients::aws::AwsClient,
-    config: Config,
+    key_jwt: String,
+    refresh_key_jwt: String,
 }
 
 impl AppState {
-    async fn new() -> Arc<AppState> {
+    async fn new(config: &Config) -> Arc<AppState> {
         let manager = SqliteConnectionManager::file(DATABASE_NAME);
         let pool = r2d2::Pool::builder()
             .max_size(100)
@@ -87,13 +90,13 @@ impl AppState {
         println!("pragma 2 {:?}", pragma2);
         println!("pragma 3 {:?}", pragma3);
         // println!("pragma 4 {:?}", pragma4);
-        let config = configs::config::Config::new();
         let aws_client = clients::aws::AwsClient::new(config.bucket_name.clone()).await;
         Arc::new(AppState {
             connection: pool,
             txs: Mutex::new(HashMap::new()),
             aws_client: aws_client,
-            config: config,
+            key_jwt: config.key_jwt.clone(),
+            refresh_key_jwt: config.refresh_key_jwt.clone(),
         })
     }
 }
@@ -111,8 +114,9 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let app_state = AppState::new().await;
-    println!("{:?}", app_state.config);
+    let config = configs::config::Config::new();
+    let app_state = AppState::new(&config).await;
+    println!("config : {:?}", config);
     let app = Router::new()
         .route("/users", post(create_user))
         .route("/users/:user_uuid", get(get_user))
@@ -204,8 +208,7 @@ async fn main() {
         .layer(DefaultBodyLimit::max(3 * 1024 * 1024))
         .layer(
             CorsLayer::new()
-                // .allow_origin(Any)
-                .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+                .allow_origin(config.wed_domain.parse::<HeaderValue>().unwrap())
                 .allow_headers(vec![
                     http::header::CONTENT_TYPE,
                     http::header::AUTHORIZATION,
@@ -220,11 +223,9 @@ async fn main() {
                     Method::OPTIONS,
                 ]),
         )
-        .with_state(app_state);
+        .with_state(app_state.clone());
 
-    let ip: [u8; 4] = [127, 0, 0, 1];
-    // let addr = SocketAddr::from(([0, 0, 0, 0], 80));
-    let addr = SocketAddr::from((ip, 8080));
+    let addr = SocketAddr::from((config.ip, config.port));
     println!("listening on {}", addr);
     axum::Server::bind(&addr)
         .serve(app.into_make_service())

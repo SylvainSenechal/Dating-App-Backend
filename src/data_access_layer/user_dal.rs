@@ -74,7 +74,7 @@ pub fn create_user(
 pub fn get_user_by_email(db: &Arc<AppState>, email: String) -> Result<User, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("SELECT * FROM Users WHERE email = ?")
+        .prepare_cached("SELECT * FROM Users WHERE email = ? LIMIT 1")
         .map_err(map_sqlite_error)?;
 
     statement
@@ -109,7 +109,7 @@ pub fn get_user_password_by_email(
 ) -> Result<(String, String, String), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("SELECT * FROM Users WHERE email = ?")
+        .prepare_cached("SELECT * FROM Users WHERE email = ? LIMIT 1")
         .map_err(map_sqlite_error)?;
 
     statement
@@ -144,7 +144,7 @@ pub fn get_user_uuid_by_private_uuid(
 ) -> Result<String, SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("SELECT user_uuid FROM Users WHERE private_user_uuid = ?")
+        .prepare_cached("SELECT user_uuid FROM Users WHERE private_user_uuid = ? LIMIT 1")
         .map_err(map_sqlite_error)?;
 
     statement
@@ -163,7 +163,9 @@ pub fn get_user_by_uuid(db: &Arc<AppState>, user_uuid: String) -> Result<User, S
         
         FROM Users 
         LEFT JOIN Photos ON Users.user_uuid = Photos.user_uuid 
-        WHERE Users.user_uuid = ?",
+        WHERE Users.user_uuid = ?
+        LIMIT 1
+        ",
         )
         .map_err(map_sqlite_error)?;
     statement

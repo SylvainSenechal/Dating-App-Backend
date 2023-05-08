@@ -154,7 +154,7 @@ pub fn get_lovers_uuids_from_message_uuid(
 ) -> Result<(String, String), SqliteError> {
     let binding = db.connection.get().unwrap();
     let mut statement = binding
-        .prepare_cached("SELECT lover1, lover2 FROM Lovers JOIN Messages ON Lovers.love_uuid = Messages.love_uuid WHERE message_uuid = ?")
+        .prepare_cached("SELECT lover1, lover2 FROM Lovers JOIN Messages ON Lovers.love_uuid = Messages.love_uuid WHERE message_uuid = ? LIMIT 1")
         .map_err(map_sqlite_error)?;
 
     statement

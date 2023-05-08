@@ -49,7 +49,7 @@ pub fn user_in_love_relation(
     let mut statement = binding
         .prepare_cached(
             "
-        SELECT * FROM Lovers WHERE love_uuid = ? AND (lover1 = ? OR lover2 = ?)
+        SELECT * FROM Lovers WHERE love_uuid = ? AND (lover1 = ? OR lover2 = ?) LIMIT 1
         ",
         )
         .map_err(map_sqlite_error)?;
