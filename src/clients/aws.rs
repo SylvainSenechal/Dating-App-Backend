@@ -6,19 +6,33 @@ use aws_sdk_s3::operation::{
 };
 use aws_sdk_s3::Client;
 use aws_smithy_http;
+use aws_types::region::Region;
 
 pub struct AwsClient {
     client: Client,
     bucket_name: String,
+    pub r2_image_domain: String,
 }
 
 impl AwsClient {
-    pub async fn new(bucket_name: String) -> AwsClient {
-        let region_provider = RegionProviderChain::default_provider().or_else("ap-southeast-1");
-        let shared_config = aws_config::from_env().region(region_provider).load().await;
+    pub async fn new(
+        r2_account_id: String,
+        r2_image_domain: String,
+        bucket_name: String,
+    ) -> AwsClient {
+        let endpoint_url = format!(
+            "{}{}{}",
+            "https://", r2_account_id, ".r2.cloudflarestorage.com"
+        );
+        let shared_config = aws_config::from_env()
+            .endpoint_url(endpoint_url)
+            .region(Region::new("auto"))
+            .load()
+            .await;
         return AwsClient {
             client: Client::new(&shared_config),
             bucket_name: bucket_name,
+            r2_image_domain: r2_image_domain,
         };
     }
 

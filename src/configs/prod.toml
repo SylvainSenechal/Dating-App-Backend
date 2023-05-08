@@ -4,3 +4,5 @@ key_jwt =
 refresh_key_jwt = 
 bucket_name = 'bucket-lemgo-prod'
 wed_domain = 'https://www.lemgo.io'
+r2_account_id = '4677c27fd128b787355958a1b8e7ba50'
+r2_image_domain = 'https://www.image.lemgo.io/'

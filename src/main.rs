@@ -90,7 +90,12 @@ impl AppState {
         println!("pragma 2 {:?}", pragma2);
         println!("pragma 3 {:?}", pragma3);
         // println!("pragma 4 {:?}", pragma4);
-        let aws_client = clients::aws::AwsClient::new(config.bucket_name.clone()).await;
+        let aws_client = clients::aws::AwsClient::new(
+            config.r2_account_id.clone(),
+            config.r2_image_domain.clone(),
+            config.bucket_name.clone(),
+        )
+        .await;
         Arc::new(AppState {
             connection: pool,
             txs: Mutex::new(HashMap::new()),

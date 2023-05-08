@@ -9,6 +9,8 @@ pub struct Config {
     pub refresh_key_jwt: String,
     pub bucket_name: String,
     pub wed_domain: String,
+    pub r2_account_id: String,
+    pub r2_image_domain: String,
 }
 
 impl Config {

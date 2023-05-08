@@ -84,14 +84,11 @@ pub async fn save_photo(
         .upload_object(&image_key, &content_type.to_string(), image_data)
         .await
     {
-        println!("aws upload object error: {}", e);
+        println!("aws upload object error: {:?}", e);
         return Err(ServiceError::Internal);
     }
 
-    let url = format!(
-        "{}{}",
-        "https://bucket-lemgo.s3.ap-southeast-1.amazonaws.com/", image_key
-    );
+    let url = format!("{}{}", state.aws_client.r2_image_domain, image_key);
     data_access_layer::photo_dal::create_user_photo(
         &state,
         image_key,
