@@ -8,7 +8,7 @@ pub struct Config {
     pub key_jwt: String,
     pub refresh_key_jwt: String,
     pub bucket_name: String,
-    pub wed_domain: String,
+    pub wed_domains: Vec<String>,
     pub r2_account_id: String,
     pub r2_image_domain: String,
 }

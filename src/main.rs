@@ -213,7 +213,17 @@ async fn main() {
         .layer(DefaultBodyLimit::max(3 * 1024 * 1024))
         .layer(
             CorsLayer::new()
-                .allow_origin(config.wed_domain.parse::<HeaderValue>().unwrap())
+                .allow_origin(
+                    config
+                        .wed_domains
+                        .iter()
+                        .map(|domain| {
+                            domain
+                                .parse::<HeaderValue>()
+                                .expect("parse web domains into HeaderValue failed")
+                        })
+                        .collect::<Vec<HeaderValue>>(),
+                )
                 .allow_headers(vec![
                     http::header::CONTENT_TYPE,
                     http::header::AUTHORIZATION,
