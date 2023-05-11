@@ -7,6 +7,6 @@ pub const OUTPUT_LEN: usize = 32; // determines the length of the returned hash 
 
 pub const DATABASE_NAME: &str = "love.db";
 
-pub const TOKEN_LIFESPAN: usize = 100; // seconds
-pub const TOKEN_REFRESH_LIFESPAN: usize = 3600; // seconds
+pub const TOKEN_LIFESPAN: usize = 3600; // seconds
+pub const TOKEN_REFRESH_LIFESPAN: usize = 3600 * 24 * 2; // seconds
 pub const DEFAULT_HASH: &str = "$argon2id$v=19$m=15000,t=2,p=1$SZZVht0nCXacXAJU1dYJ8w$QwpNt6gUQ2K+dHQVDTf5H1mkkA0yTkXXKwZ6vHkKClQ";

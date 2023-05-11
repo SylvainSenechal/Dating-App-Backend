@@ -21,6 +21,7 @@ pub struct LoveWithLover {
     pub age: u8,
     pub gender: String,
     pub description: String,
+    pub first_photo_url: Option<String>,
 }
 
 pub fn create_lovers(
@@ -68,7 +69,11 @@ pub fn get_lovers(
     let mut statement = binding
         .prepare_cached(
             "
-            SELECT * FROM Users JOIN Lovers ON Users.user_uuid = Lovers.lover1 WHERE Lovers.lover2 = ?
+            SELECT *, url FROM Users
+            JOIN Lovers ON Users.user_uuid = Lovers.lover1
+            LEFT JOIN Photos ON Lovers.lover1 = Photos.user_uuid 
+            WHERE Lovers.lover2 = ?
+            LIMIT 1 -- select only one photo
             ",
         )
         .map_err(map_sqlite_error)?;
@@ -86,6 +91,7 @@ pub fn get_lovers(
                 age: row.get("age")?,
                 gender: row.get("gender")?,
                 description: row.get("description")?,
+                first_photo_url: row.get("url")?,
             })
         })
         .map_err(map_sqlite_error)?;
@@ -94,7 +100,11 @@ pub fn get_lovers(
     let mut statement = binding
         .prepare_cached(
             "
-            SELECT * FROM Users JOIN Lovers ON Users.user_uuid = Lovers.lover2 WHERE Lovers.lover1 = ?
+            SELECT *, url FROM Users
+            JOIN Lovers ON Users.user_uuid = Lovers.lover2
+            LEFT JOIN Photos ON Lovers.lover2 = Photos.user_uuid 
+            WHERE Lovers.lover1 = ?
+            LIMIT 1 -- select only one photo
             ",
         )
         .map_err(map_sqlite_error)?;
@@ -112,6 +122,7 @@ pub fn get_lovers(
                 age: row.get("age")?,
                 gender: row.get("gender")?,
                 description: row.get("description")?,
+                first_photo_url: row.get("url")?,
             })
         })
         .map_err(map_sqlite_error)?;
