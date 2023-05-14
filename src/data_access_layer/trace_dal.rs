@@ -1,7 +1,7 @@
+use crate::configs::app_state::AppState;
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::requests::requests;
-use crate::AppState;
 use chrono;
 use rusqlite::params;
 use serde::Serialize;

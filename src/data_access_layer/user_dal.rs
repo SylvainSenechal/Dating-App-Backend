@@ -2,10 +2,10 @@ use chrono;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
 
+use crate::configs::app_state::AppState;
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::requests::requests;
-use crate::AppState;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -134,7 +134,7 @@ pub fn get_user_password_by_user_uuid(
         .map_err(map_sqlite_error)?;
 
     statement
-        .query_row(params![user_uuid], |row| Ok(row.get("password")?))
+        .query_row(params![user_uuid], |row| row.get("password"))
         .map_err(map_sqlite_error)
 }
 
@@ -210,7 +210,6 @@ pub fn update_user_infos(
     db: &Arc<AppState>,
     user: requests::UpdateUserInfosReq,
 ) -> Result<(), SqliteError> {
-    println!("{:?}", user);
     let binding = db.connection.get().unwrap();
     let mut statement = binding
         .prepare_cached(

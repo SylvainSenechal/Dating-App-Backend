@@ -1,4 +1,3 @@
-use aws_config::meta::region::RegionProviderChain;
 use aws_sdk_s3::error::SdkError;
 use aws_sdk_s3::operation::{
     delete_object::{DeleteObjectError, DeleteObjectOutput},
@@ -29,11 +28,11 @@ impl AwsClient {
             .region(Region::new("auto"))
             .load()
             .await;
-        return AwsClient {
+        AwsClient {
             client: Client::new(&shared_config),
             bucket_name: bucket_name,
             r2_image_domain: r2_image_domain,
-        };
+        }
     }
 
     pub async fn upload_object(

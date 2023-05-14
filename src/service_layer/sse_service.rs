@@ -1,4 +1,5 @@
-use crate::{data_access_layer, AppState};
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use axum::{
     extract::{Path, State},
     response::sse::{Event, Sse},
@@ -63,7 +64,6 @@ pub async fn server_side_event_handler(
         };
 
         while let Ok(msg) = red.recv().await {
-            println!("sending");
             yield Ok(Event::default().event("update").json_data(msg).unwrap())
         }
     };

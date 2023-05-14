@@ -1,8 +1,9 @@
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use crate::my_errors::service_errors::ServiceError;
 use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};
-use crate::{data_access_layer, AppState};
 use axum::{extract::State, http::StatusCode, Json};
 use std::sync::Arc;
 

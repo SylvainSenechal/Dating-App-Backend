@@ -19,8 +19,9 @@ use serde_json::json;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::configs::app_state::AppState;
 use crate::constants::constants::{DEFAULT_HASH, TOKEN_LIFESPAN, TOKEN_REFRESH_LIFESPAN};
-use crate::{data_access_layer, AppState};
+use crate::data_access_layer;
 
 // JWT : https://github.com/Keats/jsonwebtoken#validation
 
@@ -57,13 +58,10 @@ pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(login_user): Json<UserLoginRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<LoginResponse>>), AuthError> {
-    println!("login {:?}", login_user);
     let user_found = data_access_layer::user_dal::get_user_password_by_email(
         &state,
         login_user.email.to_string(),
     );
-
-    println!("user found {:?}", user_found);
 
     match user_found {
         Ok((user_uuid, private_user_uuid, password)) => {
@@ -137,7 +135,6 @@ pub async fn token_refresh(
     );
     match token_data {
         Ok(data) => {
-            println!("{:?}", data);
             let my_claims = JwtClaims {
                 user_uuid: data.claims.user_uuid,
                 private_user_uuid: data.claims.private_user_uuid,

@@ -9,26 +9,19 @@ mod responses;
 mod service_layer;
 mod utilities;
 
-use configs::config::Config;
-use constants::constants::DATABASE_NAME;
 // TODO : Rework Actions CI/CD
 // TODO : Show when swiping if the user liked me already
 // TODO : Stats : How many people fit my criterion I havent swiped yet + How many people are looking for my type
 // TODO : Infos bulle (?) qui explique comment l'appli fonctionne, comment les stats fonctionnent
-// TODO : rework routing into one liner
-// TODO : Lover do not return password
-// TODO : Clean struct into Request/Response/DTO folder
 // TODO : red dot sur activite swutcher nb new match
 // TODO : indicateur horizontal derniere connexion dans message
 // TODO : change routes /users/ en /action
 // todo : add a report table
-// todo : add a suggestions/bugs table / fonctionnalite send developer feedback
 // todo : retester les error messages
 // todo : check ON DELETE CASCADE
 // todo : check enabling foreign key constraint
 // todo : voir sse qui spam requetes
 // todo : faire un graphe three js ou canvas sur les stats avec des fleches /swipe pas swipe
-// todo : LIMIT 1 for query one
 // todo : check tokio tower trace
 // todo : rework les notifs
 use axum::{
@@ -39,72 +32,9 @@ use axum::{
     routing::{delete, get, post, put},
     Json, Router,
 };
-use r2d2::Pool;
-use r2d2_sqlite::SqliteConnectionManager;
-use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::sync::{Arc, Mutex};
-use tokio::sync::broadcast;
 use tower_http::cors::CorsLayer;
-
-use crate::service_layer::sse_service::SseMessage;
-use service_layer::user_service::{create_user, delete_user, get_user, update_user};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-pub struct AppState {
-    connection: Pool<SqliteConnectionManager>,
-    txs: Mutex<HashMap<String, broadcast::Sender<SseMessage>>>,
-    aws_client: clients::aws::AwsClient,
-    key_jwt: String,
-    refresh_key_jwt: String,
-}
-
-impl AppState {
-    async fn new(config: &Config) -> Arc<AppState> {
-        let manager = SqliteConnectionManager::file(DATABASE_NAME);
-        let pool = r2d2::Pool::builder()
-            .max_size(100)
-            .build(manager)
-            .expect("couldn't create pool");
-
-        let connection = pool.get().unwrap();
-        let pragma1 = connection
-            .query_row("PRAGMA journal_mode = WAL;", [], |row| {
-                let res: String = row.get(0).unwrap();
-                Ok(res)
-            })
-            .expect("Error pragma WAL mode on");
-        let pragma2 = connection
-            .execute("PRAGMA synchronous = 0;", [])
-            .expect("Error pragma synchronous = 0");
-        let pragma3 = connection
-            .execute("PRAGMA cache_size = 1000000;", [])
-            .expect("Error pragma cache_size set");
-        // let pragma4 = connection
-        //     .execute("PRAGMA foreign_keys = ON;", [])
-        //     .expect("Error pragma foreign keys = On");
-        // let pragma4 = connection.execute("PRAGMA mmap_size = 30000000000;", []);//.expect("err pragma 3");
-        // let pragma5 = connection.execute("PRAGMA locking_mode = NORMAL;", []);//.expect("err pragma 4");
-
-        println!("pragma 1 {:?}", pragma1);
-        println!("pragma 2 {:?}", pragma2);
-        println!("pragma 3 {:?}", pragma3);
-        // println!("pragma 4 {:?}", pragma4);
-        let aws_client = clients::aws::AwsClient::new(
-            config.r2_account_id.clone(),
-            config.r2_image_domain.clone(),
-            config.bucket_name.clone(),
-        )
-        .await;
-        Arc::new(AppState {
-            connection: pool,
-            txs: Mutex::new(HashMap::new()),
-            aws_client: aws_client,
-            key_jwt: config.key_jwt.clone(),
-            refresh_key_jwt: config.refresh_key_jwt.clone(),
-        })
-    }
-}
 
 #[tokio::main]
 async fn main() {
@@ -120,13 +50,23 @@ async fn main() {
         .init();
 
     let config = configs::config::Config::new();
-    let app_state = AppState::new(&config).await;
+    let app_state = configs::app_state::AppState::new(&config).await;
     println!("config : {:?}", config);
+
     let app = Router::new()
-        .route("/users", post(create_user))
-        .route("/users/:user_uuid", get(get_user))
-        .route("/users/:user_uuid", put(update_user))
-        .route("/users/:user_uuid", delete(delete_user))
+        .route("/users", post(service_layer::user_service::create_user))
+        .route(
+            "/users/:user_uuid",
+            get(service_layer::user_service::get_user),
+        )
+        .route(
+            "/users/:user_uuid",
+            put(service_layer::user_service::update_user),
+        )
+        .route(
+            "/users/:user_uuid",
+            delete(service_layer::user_service::delete_user),
+        )
         .route(
             "/users/findlover",
             get(service_layer::user_service::find_lover),

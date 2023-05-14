@@ -1,10 +1,9 @@
-use rusqlite::params;
-use serde::{Deserialize, Serialize};
-
+use crate::configs::app_state::AppState;
 use crate::my_errors::sqlite_errors::map_sqlite_error;
 use crate::my_errors::sqlite_errors::SqliteError;
 use crate::requests::requests;
-use crate::AppState;
+use rusqlite::params;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
 

@@ -10,6 +10,8 @@ use axum::{
 use rand::thread_rng;
 use std::sync::Arc;
 
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use crate::data_access_layer::user_dal::User;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::{transaction_error, SqliteError};
@@ -21,13 +23,11 @@ use crate::{
     constants::constants::{M_COST, OUTPUT_LEN, P_COST, T_COST},
     data_access_layer::user_dal::PotentialLover,
 };
-use crate::{data_access_layer, AppState};
 
 pub async fn create_user(
     State(state): State<Arc<AppState>>,
     Json(mut create_user_request): Json<requests::CreateUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    println!("{:?}", create_user_request);
     let user = data_access_layer::user_dal::get_user_by_email(
         &state,
         create_user_request.email.to_string(),
@@ -170,7 +170,6 @@ pub async fn swipe_user(
     State(state): State<Arc<AppState>>,
     Json(swipe_user_request): Json<requests::SwipeUserRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<responses::SwipeUserResponse>>), ServiceError> {
-    println!("{:?}", swipe_user_request);
     if jwt_claims.user_uuid == swipe_user_request.swiped_uuid {
         // Cannot swipe yourself..
         return Err(ServiceError::ForbiddenQuery);

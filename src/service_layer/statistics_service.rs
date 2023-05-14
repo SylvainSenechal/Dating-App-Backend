@@ -1,7 +1,8 @@
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};
-use crate::{data_access_layer, AppState};
 use crate::{
     data_access_layer::trace_dal::GetTracesResponse, my_errors::service_errors::ServiceError,
 };

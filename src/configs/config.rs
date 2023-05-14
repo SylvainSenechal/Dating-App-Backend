@@ -21,9 +21,6 @@ impl Config {
         let filename = "src/configs/prod.toml";
 
         let file_content = fs::read_to_string(filename).expect("failed to read toml config");
-        let toml_config: Config =
-            toml::from_str(&file_content).expect("failed to parse string file into toml");
-
-        return toml_config;
+        return toml::from_str(&file_content).expect("failed to parse string file into toml");
     }
 }

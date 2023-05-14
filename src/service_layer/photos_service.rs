@@ -1,13 +1,14 @@
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use crate::data_access_layer::photo_dal;
 use crate::my_errors::service_errors::ServiceError;
 use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::utilities::responses::{response_ok, ApiResponse};
-use axum::{http::StatusCode, Json};
 
-use crate::{data_access_layer, AppState};
 use aws_smithy_http;
 use axum::extract::{Multipart, Path, State};
+use axum::{http::StatusCode, Json};
 use std::fmt;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -62,7 +63,7 @@ pub async fn save_photo(
 
     let user = data_access_layer::user_dal::get_user_by_uuid(&state, jwt_claims.user_uuid.clone())?;
     let display_order = if let Some(existing_photos) = user.photo_urls {
-        existing_photos.split(",").collect::<Vec<&str>>().len() + 1
+        existing_photos.split(',').collect::<Vec<&str>>().len() + 1
     } else {
         1
     };
@@ -93,7 +94,7 @@ pub async fn save_photo(
         &state,
         image_key,
         jwt_claims.user_uuid,
-        url.to_string(),
+        url,
         display_order,
     )?;
 
@@ -139,7 +140,7 @@ pub async fn switch_photos(
     State(state): State<Arc<AppState>>,
     Json(request_switch_photo): Json<requests::SwitchPhotosRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    let user_photos = photo_dal::get_user_photos(&state, jwt_claims.user_uuid.clone())?;
+    let user_photos = photo_dal::get_user_photos(&state, jwt_claims.user_uuid)?;
     let mut photos_found = 0;
     let mut order1 = 0;
     let mut order2 = 0;

@@ -1,3 +1,5 @@
+use crate::configs::app_state::AppState;
+use crate::data_access_layer;
 use crate::data_access_layer::message_dal::Message;
 use crate::my_errors::service_errors::ServiceError;
 use crate::my_errors::sqlite_errors::SqliteError;
@@ -5,7 +7,6 @@ use crate::requests::requests;
 use crate::service_layer::auth_service::JwtClaims;
 use crate::service_layer::sse_service::{MessageData, SseMessage, SseMessageType};
 use crate::utilities::responses::{response_ok, response_ok_with_message, ApiResponse};
-use crate::{data_access_layer, AppState};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -20,7 +21,6 @@ pub async fn create_message(
     State(state): State<Arc<AppState>>,
     Json(create_message_request): Json<requests::CreateMessageRequest>,
 ) -> Result<(StatusCode, Json<ApiResponse<()>>), ServiceError> {
-    println!("{:?}", create_message_request);
     if jwt_claims.user_uuid != create_message_request.poster_uuid {
         return Err(ServiceError::ForbiddenQuery);
     }
@@ -54,7 +54,6 @@ pub async fn create_message(
         &create_message_request,
         &creation_datetime,
     )?;
-    println!("message {} created", uuid_message);
 
     let message = SseMessage {
         message_type: SseMessageType::ChatMessage,
